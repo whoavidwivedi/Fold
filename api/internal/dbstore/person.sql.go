@@ -410,8 +410,16 @@ SET
                             THEN NULL
                             ELSE COALESCE($1, company_id)
                         END,
-    first_name       = $2,
-    last_name        = $3,
+    -- COALESCE, not a bare assignment. A bare ` + "`" + `first_name = $1` + "`" + ` means a PATCH that omits
+    -- the name writes an empty string, so ` + "`" + `{"lifecycleStage": "customer"}` + "`" + ` silently
+    -- erased the lead's name — and the drawer does exactly that when you attach a company.
+    -- The read path renders an empty name as "Unnamed", which is how it reached a customer
+    -- record with a real email and no person attached to it.
+    --
+    -- These three cannot be cleared, deliberately: first_name, last_name and
+    -- lifecycle_stage are NOT NULL, and a lead with no name cannot be found again.
+    first_name       = COALESCE($2, first_name),
+    last_name        = COALESCE($3, last_name),
     -- NULLIF turns "" into NULL after the COALESCE, which is what makes clearing a field
     -- possible at all. Without it the statement has only two states — NULL means "leave
     -- alone", so a rep who cleared a phone number could only ever store an empty string,
@@ -420,7 +428,7 @@ SET
     email            = NULLIF(COALESCE($4, email), ''),
     phone            = NULLIF(COALESCE($5, phone), ''),
     job_title        = NULLIF(COALESCE($6, job_title), ''),
-    lifecycle_stage  = $7,
+    lifecycle_stage  = COALESCE($7, lifecycle_stage),
     source           = NULLIF(COALESCE($8, source), ''),
     owner_id         = COALESCE($9, owner_id),
     data             = person.data || $10::jsonb,
@@ -436,12 +444,12 @@ RETURNING
 
 type UpdatePersonParams struct {
 	CompanyID      interface{}     `json:"company_id"`
-	FirstName      string          `json:"first_name"`
-	LastName       string          `json:"last_name"`
+	FirstName      sql.NullString  `json:"first_name"`
+	LastName       sql.NullString  `json:"last_name"`
 	Email          sql.NullString  `json:"email"`
 	Phone          sql.NullString  `json:"phone"`
 	JobTitle       sql.NullString  `json:"job_title"`
-	LifecycleStage string          `json:"lifecycle_stage"`
+	LifecycleStage sql.NullString  `json:"lifecycle_stage"`
 	Source         sql.NullString  `json:"source"`
 	OwnerID        uuid.NullUUID   `json:"owner_id"`
 	Data           json.RawMessage `json:"data"`

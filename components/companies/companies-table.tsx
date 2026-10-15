@@ -197,7 +197,10 @@ export function CompaniesTable() {
           </div>
         </div>
       ) : (
+        <>
+        {/* The table is hidden below md, where four columns cannot fit a phone. */}
         <RecordTable
+          className="hidden md:block"
           columns={COLUMN_WIDTHS}
           minWidth={TABLE_MIN_WIDTH}
           headings={[
@@ -247,6 +250,41 @@ export function CompaniesTable() {
             </TableRow>
           ))}
         </RecordTable>
+
+        {/* Cards below md. Four columns cannot fit a phone without cutting the domain in
+            half, and the leads list switches to cards at the same breakpoint for the
+            same reason. */}
+        <ul className="divide-border divide-y overflow-hidden rounded-lg border md:hidden">
+          {companies.map((company) => (
+            <li key={company.id}>
+              {/* Spans, not divs: a button's content model is phrasing content only. */}
+              <button
+                type="button"
+                onClick={() => setEditing(company)}
+                className="hover:bg-muted/50 flex w-full flex-col gap-1 p-3 text-left transition-colors"
+              >
+                <span className="flex items-baseline justify-between gap-2">
+                  <span className="truncate font-medium">{company.name}</span>
+                  <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+                    {company.peopleCount ?? 0} contact
+                    {company.peopleCount === 1 ? "" : "s"}
+                  </span>
+                </span>
+                {company.domain && (
+                  <span className="text-muted-foreground truncate text-sm">
+                    {company.domain}
+                  </span>
+                )}
+                {(company.industry || company.location) && (
+                  <span className="text-muted-foreground truncate text-xs">
+                    {[company.industry, company.location].filter(Boolean).join(" · ")}
+                  </span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+        </>
       )}
 
       {editing && (

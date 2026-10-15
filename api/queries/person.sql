@@ -115,8 +115,16 @@ SET
                             THEN NULL
                             ELSE COALESCE(sqlc.narg(company_id), company_id)
                         END,
-    first_name       = sqlc.arg(first_name),
-    last_name        = sqlc.arg(last_name),
+    -- COALESCE, not a bare assignment. A bare `first_name = $1` means a PATCH that omits
+    -- the name writes an empty string, so `{"lifecycleStage": "customer"}` silently
+    -- erased the lead's name — and the drawer does exactly that when you attach a company.
+    -- The read path renders an empty name as "Unnamed", which is how it reached a customer
+    -- record with a real email and no person attached to it.
+    --
+    -- These three cannot be cleared, deliberately: first_name, last_name and
+    -- lifecycle_stage are NOT NULL, and a lead with no name cannot be found again.
+    first_name       = COALESCE(sqlc.narg(first_name), first_name),
+    last_name        = COALESCE(sqlc.narg(last_name), last_name),
     -- NULLIF turns "" into NULL after the COALESCE, which is what makes clearing a field
     -- possible at all. Without it the statement has only two states — NULL means "leave
     -- alone", so a rep who cleared a phone number could only ever store an empty string,
@@ -125,7 +133,7 @@ SET
     email            = NULLIF(COALESCE(sqlc.narg(email), email), ''),
     phone            = NULLIF(COALESCE(sqlc.narg(phone), phone), ''),
     job_title        = NULLIF(COALESCE(sqlc.narg(job_title), job_title), ''),
-    lifecycle_stage  = sqlc.arg(lifecycle_stage),
+    lifecycle_stage  = COALESCE(sqlc.narg(lifecycle_stage), lifecycle_stage),
     source           = NULLIF(COALESCE(sqlc.narg(source), source), ''),
     owner_id         = COALESCE(sqlc.narg(owner_id), owner_id),
     data             = person.data || sqlc.arg(data)::jsonb,
