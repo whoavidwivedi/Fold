@@ -79,11 +79,13 @@ RETURNING
 UPDATE company
 SET
     name         = sqlc.arg(name),
-    domain       = COALESCE(sqlc.narg(domain), domain),
-    industry     = COALESCE(sqlc.narg(industry), industry),
-    size         = COALESCE(sqlc.narg(size), size),
-    location     = COALESCE(sqlc.narg(location), location),
-    linkedin_url = COALESCE(sqlc.narg(linkedin_url), linkedin_url),
+    -- NULLIF so an empty string clears the column instead of storing "". See the note on
+    -- UpdatePerson: COALESCE alone makes a field impossible to clear.
+    domain       = NULLIF(COALESCE(sqlc.narg(domain), domain), ''),
+    industry     = NULLIF(COALESCE(sqlc.narg(industry), industry), ''),
+    size         = NULLIF(COALESCE(sqlc.narg(size), size), ''),
+    location     = NULLIF(COALESCE(sqlc.narg(location), location), ''),
+    linkedin_url = NULLIF(COALESCE(sqlc.narg(linkedin_url), linkedin_url), ''),
     data         = company.data || sqlc.arg(data)::jsonb,
     updated_at   = now()
 WHERE workspace_id = sqlc.arg(workspace_id)

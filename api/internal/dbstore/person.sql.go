@@ -401,14 +401,27 @@ func (q *Queries) RecordEvent(ctx context.Context, arg RecordEventParams) (Recor
 const updatePerson = `-- name: UpdatePerson :one
 UPDATE person
 SET
-    company_id       = COALESCE($1, company_id),
+    -- The zero uuid means "unassign". A uuid column has no empty string, so clearing a
+    -- company had no expressible value: omitting the key means "leave alone" and "" is
+    -- rejected as a malformed uuid before this statement runs. A sentinel is the cheapest
+    -- way to give PATCH three states instead of two.
+    company_id       = CASE
+                            WHEN $1 = '00000000-0000-0000-0000-000000000000'::uuid
+                            THEN NULL
+                            ELSE COALESCE($1, company_id)
+                        END,
     first_name       = $2,
     last_name        = $3,
-    email            = COALESCE($4, email),
-    phone            = COALESCE($5, phone),
-    job_title        = COALESCE($6, job_title),
+    -- NULLIF turns "" into NULL after the COALESCE, which is what makes clearing a field
+    -- possible at all. Without it the statement has only two states — NULL means "leave
+    -- alone", so a rep who cleared a phone number could only ever store an empty string,
+    -- never remove it. Sending "" now stores NULL, which is also the value the read path
+    -- renders as "—".
+    email            = NULLIF(COALESCE($4, email), ''),
+    phone            = NULLIF(COALESCE($5, phone), ''),
+    job_title        = NULLIF(COALESCE($6, job_title), ''),
     lifecycle_stage  = $7,
-    source           = COALESCE($8, source),
+    source           = NULLIF(COALESCE($8, source), ''),
     owner_id         = COALESCE($9, owner_id),
     data             = person.data || $10::jsonb,
     updated_at       = now()
@@ -422,7 +435,7 @@ RETURNING
 `
 
 type UpdatePersonParams struct {
-	CompanyID      uuid.NullUUID   `json:"company_id"`
+	CompanyID      interface{}     `json:"company_id"`
 	FirstName      string          `json:"first_name"`
 	LastName       string          `json:"last_name"`
 	Email          sql.NullString  `json:"email"`

@@ -707,7 +707,6 @@
             "description": "Merged into existing custom values, not replaced"
           },
           "email": {
-            "format": "email",
             "type": "string"
           },
           "firstName": {

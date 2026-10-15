@@ -106,14 +106,27 @@ RETURNING
 -- name: UpdatePerson :one
 UPDATE person
 SET
-    company_id       = COALESCE(sqlc.narg(company_id), company_id),
+    -- The zero uuid means "unassign". A uuid column has no empty string, so clearing a
+    -- company had no expressible value: omitting the key means "leave alone" and "" is
+    -- rejected as a malformed uuid before this statement runs. A sentinel is the cheapest
+    -- way to give PATCH three states instead of two.
+    company_id       = CASE
+                            WHEN sqlc.narg(company_id) = '00000000-0000-0000-0000-000000000000'::uuid
+                            THEN NULL
+                            ELSE COALESCE(sqlc.narg(company_id), company_id)
+                        END,
     first_name       = sqlc.arg(first_name),
     last_name        = sqlc.arg(last_name),
-    email            = COALESCE(sqlc.narg(email), email),
-    phone            = COALESCE(sqlc.narg(phone), phone),
-    job_title        = COALESCE(sqlc.narg(job_title), job_title),
+    -- NULLIF turns "" into NULL after the COALESCE, which is what makes clearing a field
+    -- possible at all. Without it the statement has only two states — NULL means "leave
+    -- alone", so a rep who cleared a phone number could only ever store an empty string,
+    -- never remove it. Sending "" now stores NULL, which is also the value the read path
+    -- renders as "—".
+    email            = NULLIF(COALESCE(sqlc.narg(email), email), ''),
+    phone            = NULLIF(COALESCE(sqlc.narg(phone), phone), ''),
+    job_title        = NULLIF(COALESCE(sqlc.narg(job_title), job_title), ''),
     lifecycle_stage  = sqlc.arg(lifecycle_stage),
-    source           = COALESCE(sqlc.narg(source), source),
+    source           = NULLIF(COALESCE(sqlc.narg(source), source), ''),
     owner_id         = COALESCE(sqlc.narg(owner_id), owner_id),
     data             = person.data || sqlc.arg(data)::jsonb,
     updated_at       = now()
