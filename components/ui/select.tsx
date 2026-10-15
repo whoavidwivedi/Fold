@@ -21,7 +21,9 @@ function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
   return (
     <SelectPrimitive.Value
       data-slot="select-value"
-      className={cn("flex flex-1 text-left", className)}
+      // truncate: a long option name must ellipsize rather than run under the chevron
+      // and off the right edge of the trigger.
+      className={cn("flex min-w-0 flex-1 truncate text-left", className)}
       {...props}
     />
   )

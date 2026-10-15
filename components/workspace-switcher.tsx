@@ -122,10 +122,10 @@ export function WorkspaceSwitcher() {
           </>
         )}
 
-        <DropdownMenuSeparator />
-        <p className="text-muted-foreground px-2 py-1.5 text-xs">
-          Manage workspaces in settings.
-        </p>
+
+        {/* No "manage workspaces" line: there is no settings page to send anyone to, and
+            a dead affordance in a menu is worse than a menu that simply ends. Creating a
+            workspace is the next thing this menu should offer. */}
       </DropdownMenuContent>
     </DropdownMenu>
   )

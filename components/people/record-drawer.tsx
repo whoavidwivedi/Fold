@@ -107,7 +107,10 @@ export function RecordDrawer({
           side="right"
           // The drawer is an occasional surface, so it gets a standard animation — the
           // iOS curve, which is what --ease-drawer is for.
-          className="w-full ease-drawer sm:max-w-lg"
+          // The sheet owns the horizontal padding. SheetHeader and SheetFooter bring
+          // their own p-4, which is why everything between them used to sit flush
+          // against the edge and needed negative margins to pull back into line.
+          className="w-full px-4 ease-drawer sm:max-w-lg"
         >
           <DrawerBody personId={personId} onClose={onClose} />
         </SheetContent>
@@ -175,7 +178,10 @@ function DrawerBody({
 
   return (
     <>
-      <SheetHeader>
+      {/* pr-12 clears the close button, which the sheet positions absolutely in the
+          top-right. Without it a long lead name runs underneath the × on a narrow
+          screen instead of truncating above it. */}
+      <SheetHeader className="px-0 pr-12">
         <SheetTitle className="truncate">
           {person.data ? fullName(person.data) : <Skeleton className="h-6 w-48" />}
         </SheetTitle>
@@ -194,7 +200,7 @@ function DrawerBody({
 
       {person.data && (
         <>
-          <div className="-mx-1 flex gap-1">
+          <div className="flex gap-1">
             <EditLeadDialog person={person.data} />
             <DeleteLeadDialog person={person.data} onDeleted={onClose} />
           </div>
@@ -266,7 +272,7 @@ function DrawerBody({
           </Field>
         </FieldGroup>
 
-        <SheetFooter>
+        <SheetFooter className="px-0">
           {/* Button has no isPending. Compose Spinner + data-icon + disabled. */}
           <Button type="submit" disabled={!canSubmit}>
             {log.isPending && <Spinner data-icon="inline-start" />}
@@ -280,7 +286,9 @@ function DrawerBody({
         </SheetFooter>
       </form>
 
-      <div className="-mx-6 min-h-0 flex-1 overflow-y-auto px-6">
+      {/* Full-bleed scroll with padded content, so rows can scroll edge to edge while
+          their text still lines up with everything above. */}
+      <div className="-mx-4 min-h-0 flex-1 overflow-y-auto px-4">
         {timeline.isPending ? (
           <div className="flex flex-col gap-3">
             {Array.from({ length: 4 }).map((_, i) => (

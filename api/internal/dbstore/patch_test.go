@@ -47,13 +47,14 @@ func TestPatchClearsFields(t *testing.T) {
 
 	// ---- person -------------------------------------------------------------
 	person, err := q.CreatePerson(ctx, dbstore.CreatePersonParams{
-		WorkspaceID: workspaceID,
-		FirstName:   "Clear",
-		LastName:    "Test",
-		Email:       sql.NullString{String: "clear@test.local", Valid: true},
-		Phone:       sql.NullString{String: "555-0100", Valid: true},
-		JobTitle:    sql.NullString{String: "Rep", Valid: true},
-		Data:        []byte(`{}`),
+		WorkspaceID:    workspaceID,
+		LifecycleStage: "new",
+		FirstName:      "Clear",
+		LastName:       "Test",
+		Email:          sql.NullString{String: "clear@test.local", Valid: true},
+		Phone:          sql.NullString{String: "555-0100", Valid: true},
+		JobTitle:       sql.NullString{String: "Rep", Valid: true},
+		Data:           []byte(`{}`),
 	})
 	if err != nil {
 		t.Fatalf("create person: %v", err)
@@ -131,6 +132,35 @@ func TestPatchClearsFields(t *testing.T) {
 	}
 	if updated.CompanyID.Valid {
 		t.Errorf("the zero uuid did not unassign the company: %+v", updated.CompanyID)
+	}
+
+	// A partial PATCH must not touch the fields it omits. This is not theoretical: the
+	// drawer attaches a company with `{"companyId": ...}` and nothing else, and a bare
+	// `first_name = $1` wrote an empty string for the omitted name. Real leads ended up
+	// rendering as "Unnamed" with their email still attached.
+	if updated.FirstName != "Clear" || updated.LastName != "Test" {
+		t.Errorf("a partial PATCH overwrote the name: %q %q", updated.FirstName, updated.LastName)
+	}
+	if updated.LifecycleStage != "new" {
+		t.Errorf("a partial PATCH overwrote the stage: %q", updated.LifecycleStage)
+	}
+
+	// And a real change to one of them still lands.
+	renamed := "Renamed"
+	updated, err = q.UpdatePerson(ctx, dbstore.UpdatePersonParams{
+		WorkspaceID: workspaceID,
+		PersonID:    person.ID,
+		FirstName:   sql.NullString{String: renamed, Valid: true},
+		Data:        []byte(`{}`),
+	})
+	if err != nil {
+		t.Fatalf("rename: %v", err)
+	}
+	if updated.FirstName != renamed {
+		t.Errorf("renaming did not take: %q", updated.FirstName)
+	}
+	if updated.LastName != "Test" {
+		t.Errorf("renaming disturbed the last name: %q", updated.LastName)
 	}
 
 	// ---- company ------------------------------------------------------------

@@ -132,6 +132,16 @@ The highest-value section. These have all cost real time.
   resolves after the clear and writes the *old* token straight back into the cache. `token.ts`
   keeps a generation counter for this. Symptom: switching workspaces twice quickly keeps
   the first workspace, silently, with valid-looking data.
+- **Look at the screen.** Every crop and overlap fixed in this repo was found by
+  screenshotting it — `VISUAL_REVIEW=1 bunx playwright test tests/visual-review.spec.ts`
+  writes desktop/tablet/mobile shots of every screen. An assertion has to know what
+  correct looks like before anyone notices when it stops looking that way.
+- **A PATCH must never overwrite a column it was not sent.** `first_name = $1` means
+  `{"lifecycleStage":"customer"}` writes an empty name, and the drawer sends exactly that
+  when you attach a company. Real leads rendered as "Unnamed" with their email attached.
+- **Sheet padding belongs on the sheet.** `SheetHeader`/`SheetFooter` carry `p-4`; content
+  between them does not. Put `px-*` on the content and zero the header/footer's, or add
+  `pr-*` to clear the absolutely-positioned close button.
 - **Never add a control to a table row that the row itself already opens.** A delete
   button on every row is noise, sits one misclick from data loss, and pushes the column
   it shares with a header out of alignment with it.
