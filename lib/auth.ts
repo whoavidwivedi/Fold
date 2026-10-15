@@ -68,6 +68,19 @@ export const auth = betterAuth({
   emailAndPassword: { enabled: true },
   socialProviders,
 
+  // Rate limiting stays on in production — it is real protection against credential
+  // stuffing. It is the one setting the browser smoke suite cannot tolerate: every test
+  // signs up a fresh account, and the sign-ups share an IP, so the limiter answers
+  // "Too many requests" mid-suite and three tests die on a timeout that looks nothing
+  // like a rate limit. That is exactly the class of failure docs/adr/0008 exists to
+  // catch, and it stayed hidden because this suite had never actually run in CI.
+  //
+  // Test and CI runners are trusted, single-user, and ephemeral, so the protection buys
+  // nothing there. Set BETTER_AUTH_RATE_LIMIT=off to disable it anywhere else.
+  rateLimit: {
+    enabled: process.env.BETTER_AUTH_RATE_LIMIT !== "off",
+  },
+
   session: {
     // Keeps navigation from hitting the database on every request.
     cookieCache: { enabled: true, maxAge: 5 * 60 },

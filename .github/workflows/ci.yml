@@ -171,6 +171,9 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:8080
           NEXT_PUBLIC_AUTH_URL: http://localhost:3000
           BETTER_AUTH_SECRET: ci-only-secret-change-me-0123456789
+          # 14 tests, 14 sign-ups, one IP. The limiter answers "Too many requests"
+          # mid-suite and three tests fail on a timeout that reads like a hang.
+          BETTER_AUTH_RATE_LIMIT: "off"
           BETTER_AUTH_URL: http://localhost:3000
           DATABASE_URL: postgres://fold_app:fold_app@localhost:5432/postgres?sslmode=disable
         run: |
