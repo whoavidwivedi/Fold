@@ -1,0 +1,778 @@
+{
+  "components": {
+    "schemas": {
+      "CreateBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/CreateBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "data": {
+            "description": "Custom field values"
+          },
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "firstName": {
+            "maxLength": 120,
+            "type": "string"
+          },
+          "jobTitle": {
+            "type": "string"
+          },
+          "lastName": {
+            "maxLength": 120,
+            "type": "string"
+          },
+          "lifecycleStage": {
+            "default": "new",
+            "enum": [
+              "new",
+              "contacted",
+              "qualified",
+              "customer",
+              "disqualified"
+            ],
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName"
+        ],
+        "type": "object"
+      },
+      "ErrorDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "location": {
+            "description": "Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'",
+            "type": "string"
+          },
+          "message": {
+            "description": "Error message text",
+            "type": "string"
+          },
+          "value": {
+            "description": "The value at the given location"
+          }
+        },
+        "type": "object"
+      },
+      "ErrorModel": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ErrorModel.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "detail": {
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "examples": [
+              "Property foo is required but is missing."
+            ],
+            "type": "string"
+          },
+          "errors": {
+            "description": "Optional list of individual error details",
+            "items": {
+              "$ref": "#/components/schemas/ErrorDetail"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "instance": {
+            "description": "A URI reference that identifies the specific occurrence of the problem.",
+            "examples": [
+              "https://example.com/error-log/abc123"
+            ],
+            "format": "uri",
+            "type": "string"
+          },
+          "status": {
+            "description": "HTTP status code",
+            "examples": [
+              400
+            ],
+            "format": "int64",
+            "type": "integer"
+          },
+          "title": {
+            "description": "A short, human-readable summary of the problem type. This value should not change between occurrences of the error.",
+            "examples": [
+              "Bad Request"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "default": "about:blank",
+            "description": "A URI reference to human-readable documentation for the error.",
+            "examples": [
+              "https://example.com/errors/example"
+            ],
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Event": {
+        "additionalProperties": false,
+        "properties": {
+          "entity": {
+            "description": "Table that changed, e.g. person",
+            "type": "string"
+          },
+          "id": {
+            "description": "Primary key of the changed record",
+            "type": "string"
+          },
+          "version": {
+            "description": "Optimistic concurrency token",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entity",
+          "id"
+        ],
+        "type": "object"
+      },
+      "ListPersonsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ListPersonsBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Person"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "nextCursor": {
+            "description": "Pass back as ?cursor= for the next page. Absent means the last page.",
+            "type": "string"
+          },
+          "total": {
+            "description": "Total matching rows, so the UI count matches the list",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "type": "object"
+      },
+      "Person": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/Person.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "data": {
+            "description": "Custom field values, keyed by field_definition.key"
+          },
+          "email": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "id": {
+            "description": "Stable identifier",
+            "type": "string"
+          },
+          "jobTitle": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "lifecycleStage": {
+            "description": "new | contacted | qualified | customer | disqualified",
+            "type": "string"
+          },
+          "ownerId": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "score": {
+            "description": "Composite of fit and intent, 0-100",
+            "format": "int32",
+            "type": "integer"
+          },
+          "scoreFit": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "scoreIntent": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "firstName",
+          "lastName",
+          "lifecycleStage",
+          "score",
+          "scoreFit",
+          "scoreIntent",
+          "data",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "TokenBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/TokenBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "expiresAt": {
+            "description": "Mint another after this instant",
+            "format": "date-time",
+            "type": "string"
+          },
+          "path": {
+            "description": "SSE endpoint to connect to",
+            "type": "string"
+          },
+          "token": {
+            "description": "Query parameter to append",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "token",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
+      "UpdateBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/UpdateBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "data": {
+            "description": "Merged into existing custom values, not replaced"
+          },
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "firstName": {
+            "maxLength": 120,
+            "type": "string"
+          },
+          "jobTitle": {
+            "type": "string"
+          },
+          "lastName": {
+            "maxLength": 120,
+            "type": "string"
+          },
+          "lifecycleStage": {
+            "enum": [
+              "new",
+              "contacted",
+              "qualified",
+              "customer",
+              "disqualified"
+            ],
+            "type": "string"
+          },
+          "ownerId": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Lead management CRM API. Multi-tenant by workspace; every query is Row Level Security enforced. Auth is a Better Auth JWT, verified offline against the JWKS endpoint.",
+    "title": "Fold API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "description": "Unauthenticated on purpose so load balancers and uptime monitors do not need a token.",
+        "operationId": "health",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Liveness probe"
+      }
+    },
+    "/v1/persons": {
+      "get": {
+        "description": "Keyset-paginated. Pass nextCursor back as ?cursor= to page forward. Counts are computed under the same filters, so the UI count always matches the list.",
+        "operationId": "list-persons",
+        "parameters": [
+          {
+            "description": "Filter by qualification stage",
+            "explode": false,
+            "in": "query",
+            "name": "lifecycleStage",
+            "schema": {
+              "description": "Filter by qualification stage",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by assigned rep",
+            "explode": false,
+            "in": "query",
+            "name": "ownerId",
+            "schema": {
+              "description": "Filter by assigned rep",
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "companyId",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Full-text search across name, email local part and email domain",
+            "explode": false,
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "description": "Full-text search across name, email local part and email domain",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque keyset cursor from nextCursor. Leave empty for the first page.",
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "description": "Opaque keyset cursor from nextCursor. Leave empty for the first page.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page size",
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "description": "Page size",
+              "format": "int64",
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListPersonsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List people",
+        "tags": [
+          "people"
+        ]
+      },
+      "post": {
+        "operationId": "create-person",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Person"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Create a person",
+        "tags": [
+          "people"
+        ]
+      }
+    },
+    "/v1/persons/{id}": {
+      "delete": {
+        "description": "Sets deleted_at. Sales data gets deleted by accident; this is recoverable.",
+        "operationId": "delete-person",
+        "parameters": [
+          {
+            "description": "Person id",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Person id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Soft-delete a person",
+        "tags": [
+          "people"
+        ]
+      },
+      "get": {
+        "operationId": "get-person",
+        "parameters": [
+          {
+            "description": "Person id",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Person id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Person"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Fetch one person",
+        "tags": [
+          "people"
+        ]
+      },
+      "patch": {
+        "description": "Omitted nullable fields are left alone. Custom values in `data` are merged, not replaced.",
+        "operationId": "update-person",
+        "parameters": [
+          {
+            "description": "Person id",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Person id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Person"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Update a person",
+        "tags": [
+          "people"
+        ]
+      }
+    },
+    "/v1/realtime/token": {
+      "post": {
+        "description": "EventSource cannot send an Authorization header, so the browser exchanges its JWT for a 60-second workspace-scoped token and passes it as a query parameter. Never put a long-lived JWT in a URL, where it would land in every access log.",
+        "operationId": "create-stream-token",
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Mint a short-lived SSE stream token",
+        "tags": [
+          "realtime"
+        ]
+      }
+    },
+    "/v1/stream": {
+      "get": {
+        "description": "Long-lived SSE stream of cache-invalidation hints. Clients invalidate the affected query and refetch. Events are transient by design — after a reconnect, refetch rather than trusting state.",
+        "operationId": "stream-events",
+        "parameters": [
+          {
+            "description": "Short-lived stream token from POST /v1/realtime/token",
+            "explode": false,
+            "in": "query",
+            "name": "token",
+            "schema": {
+              "description": "Short-lived stream token from POST /v1/realtime/token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "description": "Each oneOf object in the array represents one possible Server Sent Events (SSE) message, serialized as UTF-8 text according to the SSE specification.",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "properties": {
+                          "data": {
+                            "$ref": "#/components/schemas/Event"
+                          },
+                          "event": {
+                            "const": "change",
+                            "description": "The event name.",
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "The event ID.",
+                            "type": "integer"
+                          },
+                          "retry": {
+                            "description": "The retry time in milliseconds.",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "event"
+                        ],
+                        "title": "Event change",
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "title": "Server Sent Events",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Subscribe to workspace realtime events",
+        "tags": [
+          "realtime"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+version: "2"
+sql:
+  - engine: postgresql
+    schema: migrations/*.sql
+    queries: queries/*.sql
+    gen:
+      go:
+        package: dbstore
+        out: internal/dbstore
+        # database/sql, not pgx/v5. With pgx/v5 sqlc emits pgtype.UUID and pgtype.Text
+        # for every column — not just nullable ones — so handlers juggle pgtype wrappers
+        # for primary keys too. With database/sql + emit_pointers_for_null_types we get
+        # uuid.UUID, string and time.Time with a pointer only where the column is NULL.
+        #
+        # The wire protocol is still pgx: platform.DB opens the pool through
+        # pgx/v5/stdlib's connector, so this costs no round trips. The only native-pgx
+        # piece is the realtime LISTEN connection, which is a single dedicated handle.
+        sql_package: database/sql
+        emit_json_tags: true
+        emit_empty_slices: true
+        emit_pointers_for_null_types: true
+        # No `overrides` block needed: sqlc's postgres driver already maps uuid to
+        # github.com/google/uuid and jsonb to encoding/json.RawMessage. Adding them
+        # duplicates the import and fails to compile.
+
+# regenerate with: sqlc generate   (from api/)

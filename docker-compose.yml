@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: fold-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: postgres
+      # Faster local boots. Never set fsync=off on anything real.
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    ports:
+      - "5432:5432"
+    volumes:
+      - fold-pgdata:/var/lib/postgresql/data
+      # Creates the non-superuser fold_app role. The API must connect as a role that
+      # cannot bypass RLS, or every tenant policy is decorative.
+      - ./api/docker/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    command:
+      - postgres
+      # Required by unaccent() and by the generated tsvector columns.
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+
+  # One-shot: start the API, run migrations, exit. `make dev-api` does this in the
+  # foreground instead.
+  migrate:
+    image: golang:1.27-alpine
+    working_dir: /src
+    profiles: ["migrate"]
+    volumes:
+      - ./api:/src
+    environment:
+      # Migrations run as the superuser because CREATE EVENT TRIGGER requires one.
+      MIGRATION_DATABASE_URL: postgres://postgres:postgres@db:5432/postgres?sslmode=disable
+    command: sh -c "go run ./cmd/api --migrate-only"
+
+volumes:
+  fold-pgdata:

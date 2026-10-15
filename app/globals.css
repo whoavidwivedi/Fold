@@ -130,3 +130,73 @@
     @apply font-sans;
     }
 }
+
+/* ---------------------------------------------------------------------------
+   Brand → semantic → component token hierarchy.
+   Brand primitives below feed the semantic tokens in :root/.dark above. Change a
+   brand value to re-skin the whole product without touching a single component.
+--------------------------------------------------------------------------- */
+@theme {
+  --color-brand-50:  oklch(0.97 0.02 264);
+  --color-brand-100: oklch(0.93 0.04 264);
+  --color-brand-200: oklch(0.87 0.07 264);
+  --color-brand-300: oklch(0.78 0.11 264);
+  --color-brand-400: oklch(0.68 0.16 264);
+  --color-brand-500: oklch(0.58 0.21 264);
+  --color-brand-600: oklch(0.49 0.22 264);
+  --color-brand-700: oklch(0.40 0.18 264);
+  --color-brand-800: oklch(0.32 0.13 264);
+  --color-brand-900: oklch(0.25 0.09 264);
+  --color-brand-950: oklch(0.18 0.06 264);
+}
+
+/* ---------------------------------------------------------------------------
+   Motion tokens.
+   Built-in CSS easings are too weak — they lack the punch that makes an
+   interaction feel intentional. Use these instead of ease-in / linear.
+
+   Animation budget (see AGENTS.md):
+     100+ times/day  (command palette, keyboard) -> NO animation
+     tens/day         (rows, hovers)             -> reduced
+     occasional      (drawer, dialog, toast)     -> standard
+--------------------------------------------------------------------------- */
+@theme {
+  --ease-out-ui:    cubic-bezier(0.23, 1, 0.32, 1);    /* entering: fast start, feels instant */
+  --ease-in-out-ui: cubic-bezier(0.77, 0, 0.175, 1);   /* moving on screen: natural accel/decel */
+  --ease-drawer:    cubic-bezier(0.32, 0.72, 0, 1);    /* iOS drawer curve — record drawer, sheets */
+
+  --duration-instant: 75ms;
+  --duration-fast:    150ms;
+  --duration-base:    200ms;   /* the default: transition-transform duration-base ease-out-ui */
+  --duration-slow:    300ms;
+}
+
+/* ---------------------------------------------------------------------------
+   Density tokens.
+   Reps want 3x more rows than executives. One token, two modes, no component
+   variants. Set data-density on <html>; defaults to comfortable.
+--------------------------------------------------------------------------- */
+@theme inline {
+  --spacing-row: var(--row-height);
+  --spacing-control: var(--control-height);
+}
+
+:root {
+  --row-height: 2.25rem; /* 36px — comfortable */
+  --control-height: 2.25rem;
+}
+
+:root[data-density="compact"] {
+  --row-height: 1.75rem; /* 28px — compact */
+  --control-height: 2rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

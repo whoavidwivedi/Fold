@@ -1,4 +1,4 @@
-# dependencies
+# Dependencies
 /node_modules
 /.pnp
 .pnp.*
@@ -8,7 +8,7 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
+# Testing
 /coverage
 
 # next.js
@@ -28,8 +28,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -37,3 +38,19 @@ pnpm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent skills (installed via `bunx skills add`)
+.agents/
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/.playwright/
+
+# go
+/api/api
+/api/*.test
+
+# local scratch
+/test-results/*.png

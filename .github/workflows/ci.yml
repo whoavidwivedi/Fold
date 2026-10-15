@@ -1,0 +1,186 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same branch. A PR that is pushed to three times should
+# not consume three full CI runs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: Go API
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        # Matches docker-compose.yml. The app role is deliberately NOT a superuser:
+        # Postgres bypasses row level security for superusers and table owners, so a
+        # superuser connection would make the isolation tests pass vacuously.
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 3s --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+          cache-dependency-path: api/go.sum
+
+      - name: Install sqlc
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+
+      - name: Seed the app role
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -f api/docker/init.sql
+
+      # Failing here means a committed migration or query file was edited after it
+      # shipped, or someone hand-edited generated code.
+      - name: Generated Go is up to date
+        working-directory: api
+        run: |
+          sqlc generate
+          git diff --exit-code -- internal/dbstore
+
+      - name: Generated contract is up to date
+        run: |
+          cd api && go run ./cmd/api --print-openapi > ../openapi.json
+          cd .. && git diff --exit-code -- openapi.json
+
+      - name: Build
+        working-directory: api
+        run: go build ./...
+
+      - name: Vet
+        working-directory: api
+        run: go vet ./...
+
+      - name: gofmt
+        working-directory: api
+        run: test -z "$(gofmt -l ./cmd ./internal ./migrations)"
+
+      - name: Test
+        working-directory: api
+        env:
+          TEST_DATABASE_URL: postgres://fold_app:fold_app@localhost:5432/postgres?sslmode=disable
+          MIGRATION_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+        run: go test ./... -race
+
+  web:
+    name: Next.js
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Generated client is up to date
+        run: |
+          bun run orval
+          git diff --exit-code -- lib/api/generated
+
+      - run: bun typecheck
+
+      - run: bun run lint
+
+      - name: Build
+        run: bun run build
+
+  smoke:
+    name: Browser smoke
+    runs-on: ubuntu-latest
+
+    # The suite drives a real browser against a real stack. Four bugs in the first session
+    # passed every curl check and failed here — see docs/adr/0008.
+    needs: [api, web]
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 3s --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+          cache-dependency-path: api/go.sum
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: bunx playwright install --with-deps chromium
+
+      - name: Seed the app role
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -f api/docker/init.sql
+
+      - name: Start the API
+        working-directory: api
+        env:
+          DATABASE_URL: postgres://fold_app:fold_app@localhost:5432/postgres?sslmode=disable
+          MIGRATION_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+          ADDR: ":8080"
+          AUTH_BASE_URL: http://localhost:3000
+          JWKS_URL: http://localhost:3000/api/auth/jwks
+          STREAM_TOKEN_SECRET: ci-only-secret-at-least-32-bytes-long
+          CORS_ORIGINS: http://localhost:3000
+        run: |
+          nohup go run ./cmd/api > api.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null http://localhost:8080/health; then break; fi
+            sleep 1
+          done
+          curl -sf -o /dev/null http://localhost:8080/health || (cat api.log; exit 1)
+
+      - name: Start Next
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8080
+          NEXT_PUBLIC_AUTH_URL: http://localhost:3000
+          BETTER_AUTH_SECRET: ci-only-secret-change-me-0123456789
+          BETTER_AUTH_URL: http://localhost:3000
+          DATABASE_URL: postgres://fold_app:fold_app@localhost:5432/postgres?sslmode=disable
+        run: |
+          nohup bun run start > web.log 2>&1 &
+          for i in $(seq 1 90); do
+            if curl -sf -o /dev/null http://localhost:3000/sign-in; then break; fi
+            sleep 1
+          done
+          curl -sf -o /dev/null http://localhost:3000/sign-in || (cat web.log; exit 1)
+
+      - name: Browser tests
+        run: bunx playwright test
+
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
