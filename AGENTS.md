@@ -124,6 +124,15 @@ The highest-value section. These have all cost real time.
 - **`format:"email"` rejects `""` with a 422 before the handler runs.** Huma validates
   whatever is present, and an empty string is present. Any field that must be clearable
   cannot carry a format tag — validate in the handler instead, skipping the empty string.
+- **`queryClient.clear()` does not refetch mounted queries.** It empties the cache, but a
+  mounted `QueryObserver` only re-subscribes on its *next render*. Use
+  `invalidateQueries()`, which refetches active observers immediately. Symptom: the screen
+  shows the previous tenant's rows while the API correctly returns nothing for the new one.
+- **`clearToken()` must invalidate in-flight refreshes.** A refresh already running
+  resolves after the clear and writes the *old* token straight back into the cache. `token.ts`
+  keeps a generation counter for this. Symptom: switching workspaces twice quickly keeps
+  the first workspace, silently, with valid-looking data.
+- **Base UI's `DropdownMenuLabel` throws without an enclosing `DropdownMenuGroup`.**
 - **Base UI's `Select` renders `SelectValue` from the `items` collection, not from the
   mounted `<SelectItem>` children.** Omit `items` and the trigger shows the raw value — a
   uuid in our case. It passes every API check and is unusable. Same family of bug as a
