@@ -3,9 +3,9 @@
 import { useMemo } from "react"
 
 import { listCompanies } from "@/lib/api/generated/endpoints/companies/companies"
-import type { CreateBodyLifecycleStage } from "@/lib/api/generated/model"
 import { useQuery } from "@tanstack/react-query"
 
+import type { Draft } from "@/components/forms/record-form"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
@@ -30,7 +30,6 @@ export type PersonDraft = {
   email: string
   phone: string
   jobTitle: string
-  lifecycleStage: CreateBodyLifecycleStage
   companyId: string
 }
 
@@ -43,28 +42,17 @@ export type PersonDraft = {
  */
 export const NO_COMPANY = "00000000-0000-0000-0000-000000000000"
 
-export const EMPTY_DRAFT: PersonDraft = {
-  firstName: "",
-  lastName: "",
-  email: "",
-  phone: "",
-  jobTitle: "",
-  lifecycleStage: "new",
-  companyId: "",
-}
-
 export function PersonFormFields({
   draft,
   onChange,
   idPrefix,
 }: {
-  draft: PersonDraft
-  onChange: (next: PersonDraft) => void
+  draft: Draft
+  onChange: (next: Draft) => void
   /** Unique per dialog. Two dialogs on a page would otherwise share ids and labels. */
   idPrefix: string
 }) {
-  const set = <K extends keyof PersonDraft>(key: K, value: PersonDraft[K]) =>
-    onChange({ ...draft, [key]: value })
+  const set = (key: string, value: string) => onChange({ ...draft, [key]: value })
 
   return (
     <FieldGroup>
@@ -125,7 +113,7 @@ export function PersonFormFields({
           <Select
             items={STAGES}
             value={draft.lifecycleStage}
-            onValueChange={(v) => v && set("lifecycleStage", v)}
+            onValueChange={(v) => v && set("lifecycleStage", v as string)}
           >
             <SelectTrigger id={`${idPrefix}-stage`} className="w-full">
               <SelectValue />

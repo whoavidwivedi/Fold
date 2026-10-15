@@ -5,43 +5,28 @@ import { useQuery } from "@tanstack/react-query"
 
 import { listCompanies } from "@/lib/api/generated/endpoints/companies/companies"
 
+import type { Draft } from "@/components/forms/record-form"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
 /**
- * The editable shape of a company.
+ * A company's fields. Shared by create and edit, exactly as with PersonFormFields — the
+ * two dialogs drifted the moment the form had more than a name in it, and a company that
+ * can be created but not corrected is worse than one that cannot be created.
  *
- * One component for create and edit, exactly as with PersonFormFields. The two dialogs
- * used to drift the moment the form had more than a name in it, and a company that can
- * be created but not corrected is worse than one that cannot be created.
+ * The draft type itself is the shared one from components/forms/record-form, so a field
+ * added here cannot end up missing from one dialog's submit body.
  */
-export type CompanyDraft = {
-  name: string
-  domain: string
-  industry: string
-  size: string
-  location: string
-}
-
-export const EMPTY_COMPANY: CompanyDraft = {
-  name: "",
-  domain: "",
-  industry: "",
-  size: "",
-  location: "",
-}
-
 export function CompanyFormFields({
   draft,
   onChange,
   idPrefix,
 }: {
-  draft: CompanyDraft
-  onChange: (next: CompanyDraft) => void
+  draft: Draft
+  onChange: (next: Draft) => void
   idPrefix: string
 }) {
-  const set = <K extends keyof CompanyDraft>(key: K, value: CompanyDraft[K]) =>
-    onChange({ ...draft, [key]: value })
+  const set = (key: string, value: string) => onChange({ ...draft, [key]: value })
 
   return (
     <FieldGroup>

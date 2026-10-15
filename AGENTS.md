@@ -132,6 +132,16 @@ The highest-value section. These have all cost real time.
   resolves after the clear and writes the *old* token straight back into the cache. `token.ts`
   keeps a generation counter for this. Symptom: switching workspaces twice quickly keeps
   the first workspace, silently, with valid-looking data.
+- **Never add a control to a table row that the row itself already opens.** A delete
+  button on every row is noise, sits one misclick from data loss, and pushes the column
+  it shares with a header out of alignment with it.
+- **Both record lists render through `components/data/record-table.tsx`.** Each building
+  its own header is how the two drifted apart. Header rows need `w-full` or the header grid
+  sizes to content while the body fills the width.
+- **`go test ./...` runs packages in parallel processes; one of them migrating is not
+  enough.** `platform.Migrate` takes a Postgres advisory lock because goose v3.29 does
+  not. Without it two processes both read version 0 and one dies with a duplicate-type
+  error — which is a production bug too, since every replica migrates on boot.
 - **A create body and an update body are not the same function, even when they look
   identical.** Dropping blank fields is right on create and wrong on update, where a
   blank means "clear this" and an omitted key means "leave it alone". One shared helper
@@ -139,6 +149,9 @@ The highest-value section. These have all cost real time.
 - **A per-row `aria-label` that repeats the row's own content changes that row's
   accessible name.** `aria-label="Delete Acme"` made the contacts cell read
   "0 Delete Acme" and broke every selector scoped to it. Label the action, not the record.
+- **A `DialogTrigger` cannot live inside the dialog it opens.** It must be a sibling of
+  the content, so a component that is both trigger and dialog renders a button that does
+  nothing. Pass `onClick` and let the caller own the open state.
 - **Base UI's `DropdownMenuLabel` throws without an enclosing `DropdownMenuGroup`.**
 - **Base UI's `Select` renders `SelectValue` from the `items` collection, not from the
   mounted `<SelectItem>` children.** Omit `items` and the trigger shows the raw value — a

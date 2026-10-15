@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { RiAddLine, RiDeleteBin6Line } from "@remixicon/react"
+import { RiAddLine } from "@remixicon/react"
 
 import {
   createCompany,
@@ -13,55 +13,71 @@ import {
 import type { Company } from "@/lib/api/generated/model"
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
-import {
-  EMPTY_COMPANY,
-  CompanyFormFields,
-  type CompanyDraft,
-} from "@/components/companies/company-form"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
+import { CompanyFormFields } from "@/components/companies/company-form"
 import {
-  Table,
-  TableBody,
+  RecordTable,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
-} from "@/components/ui/table"
+  cellClass,
+  gridRow,
+  nameButtonClass,
+  rowClass,
+} from "@/components/data/record-table"
+import {
+  NewRecordTrigger,
+  RecordDialog,
+  isSubmittable,
+  newBody,
+  updateBody,
+  type Draft,
+} from "@/components/forms/record-form"
 
 const PAGE_SIZE = 50
 
-// One grid template for the header and every row, so they cannot drift. Mirrors
-// components/people/people-table.tsx — a second table that lays itself out differently is
-// the thing that makes a product feel unfinished.
+// One grid template, handed to RecordTable which applies it to the header and every row.
+// Mirrors components/people/people-table.tsx — the two lists must not drift apart.
 const COLUMN_WIDTHS =
-  "minmax(200px, 2fr) minmax(160px, 1.2fr) minmax(140px, 1fr) minmax(90px, auto)"
+  "minmax(200px, 2fr) minmax(160px, 1.2fr) minmax(140px, 1fr) minmax(80px, auto)"
 const TABLE_MIN_WIDTH = 640
+
+/** A company needs a name and nothing else. Named once so the guard and the body agree. */
+const REQUIRED = ["name"] as const
+
+const EMPTY: Draft = {
+  name: "",
+  domain: "",
+  industry: "",
+  size: "",
+  location: "",
+}
 
 /**
  * The companies list.
  *
  * Deliberately not virtualized, unlike the leads table. A workspace holds orders of
  * magnitude fewer companies than people, so a windowed list here would be machinery with
- * nothing to window. Add it when a workspace has enough companies for it to matter — see
- * the comment on the leads table for why it is there at all.
+ * nothing to window. Add it when a workspace has enough companies for it to matter.
  */
 export function CompaniesTable() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
   const debouncedSearch = useDebouncedValue(search, 250)
+
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createDraft, setCreateDraft] = useState<Draft>(EMPTY)
+  const [editing, setEditing] = useState<Company | null>(null)
 
   const query = useQuery({
     queryKey: ["companies", { search: debouncedSearch }],
@@ -80,10 +96,23 @@ export function CompaniesTable() {
   const companies = useMemo(() => query.data?.items ?? [], [query.data])
 
   const create = useMutation({
-    mutationFn: (draft: CompanyDraft) =>
-      createCompany(newCompanyBody(draft)),
+    mutationFn: (draft: Draft) => createCompany(newBody(draft, REQUIRED)),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["companies"] })
+      // Closed on success, not on click, so a failed save keeps what was typed.
+      setCreateOpen(false)
+      setCreateDraft(EMPTY)
+    },
+  })
+
+  const update = useMutation({
+    mutationFn: ({ id, draft }: { id: string; draft: Draft }) =>
+      updateCompany(id, updateBody(draft, REQUIRED)),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["companies"] })
+      // The lead list shows a contacts count per company row, so it moves too.
+      await queryClient.invalidateQueries({ queryKey: ["people"] })
+      setEditing(null)
     },
   })
 
@@ -91,19 +120,13 @@ export function CompaniesTable() {
     mutationFn: (id: string) => deleteCompany(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["companies"] })
-      // The lead list shows the contacts count from a company row, so it moves too.
       await queryClient.invalidateQueries({ queryKey: ["people"] })
+      // Cancel, save and delete all close the dialog the same way. Leaving it open after
+      // a delete is the bug the lead drawer had: a modal sitting on top of the list you
+      // are trying to check.
+      setEditing(null)
     },
   })
-
-  const [editing, setEditing] = useState<Company | null>(null)
-
-  // Cancel, save and delete all close the dialog the same way. Leaving it open after a
-  // delete is the bug the lead drawer had: a modal sitting on top of the list you are
-  // trying to check.
-  function onEditClosed() {
-    setEditing(null)
-  }
 
   return (
     <div className="flex h-full flex-col gap-4 p-4 md:p-6">
@@ -124,11 +147,34 @@ export function CompaniesTable() {
           className="max-w-xs"
         />
 
-        <NewCompanyDialog
-          pending={create.isPending}
-          error={create.isError}
-          onCreate={(draft) => create.mutate(draft)}
-        />
+        <div className="ml-auto flex items-center gap-2">
+          <NewRecordTrigger
+            label="New company"
+            icon={<RiAddLine aria-hidden data-icon="inline-start" />}
+            onClick={() => setCreateOpen(true)}
+          />
+          <RecordDialog
+            open={createOpen}
+            onOpenChange={(next) => {
+              setCreateOpen(next)
+              if (!next) setCreateDraft(EMPTY)
+            }}
+            title="New company"
+            description="Only a name is required. Everything else can wait."
+            fields={
+              <CompanyFormFields
+                draft={createDraft}
+                onChange={setCreateDraft}
+                idPrefix="new-company"
+              />
+            }
+            submitLabel="Create"
+            pending={create.isPending}
+            error={create.isError}
+            canSubmit={isSubmittable(createDraft, REQUIRED)}
+            onSubmit={() => create.mutate(createDraft)}
+          />
+        </div>
       </div>
 
       {query.isPending ? (
@@ -151,94 +197,68 @@ export function CompaniesTable() {
           </div>
         </div>
       ) : (
-        <div className="min-h-0 overflow-hidden rounded-lg border">
-          <div className="h-full overflow-auto">
-            <Table
-              style={{ display: "grid", minWidth: TABLE_MIN_WIDTH }}
-              className="w-full"
+        <RecordTable
+          columns={COLUMN_WIDTHS}
+          minWidth={TABLE_MIN_WIDTH}
+          headings={[
+            { label: "Name" },
+            { label: "Domain" },
+            { label: "Industry" },
+            { label: "Contacts", align: "right" },
+          ]}
+        >
+          {companies.map((company) => (
+            <TableRow
+              key={company.id}
+              className={rowClass()}
+              style={gridRow(COLUMN_WIDTHS)}
+              onClick={() => setEditing(company)}
             >
-              <TableHeader className="bg-background sticky top-0 z-10 grid">
-                <TableRow
-                  className="grid"
-                  style={{ gridTemplateColumns: COLUMN_WIDTHS }}
+              <TableCell className={cellClass()}>
+                {/* A <tr> is not a control. role="button" here would erase the row from
+                    screen-reader table navigation, so the name is the button and the row
+                    handler is the pointer shortcut beside it. */}
+                <button
+                  type="button"
+                  onClick={() => setEditing(company)}
+                  className={nameButtonClass()}
                 >
-                  <TableHead>Name</TableHead>
-                  <TableHead>Domain</TableHead>
-                  <TableHead>Industry</TableHead>
-                  <TableHead className="text-right">Contacts</TableHead>
-                </TableRow>
-              </TableHeader>
-
-              <TableBody className="grid">
-                {companies.map((company) => (
-                  <TableRow
-                    key={company.id}
-                    onClick={() => setEditing(company)}
-                    className="grid cursor-pointer transition-colors hover:bg-muted/50"
-                    style={{ gridTemplateColumns: COLUMN_WIDTHS }}
-                  >
-                    <TableCell className="flex items-center overflow-hidden">
-                      {/* A <tr> is not a control. role="button" here would erase the row
-                          from screen-reader table navigation, so the name is the button
-                          and the row handler is the pointer shortcut beside it. */}
-                      <button
-                        type="button"
-                        onClick={() => setEditing(company)}
-                        className="-my-1 block max-w-full truncate px-1 text-left font-medium hover:underline underline-offset-4 focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:outline-none"
-                      >
-                        {company.name}
-                      </button>
-                    </TableCell>
-                    <TableCell className="flex items-center overflow-hidden">
-                      <span className="text-muted-foreground block truncate text-sm">
-                        {company.domain ?? "—"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="flex items-center overflow-hidden">
-                      <span className="text-muted-foreground block truncate text-sm">
-                        {company.industry ?? "—"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="flex items-center justify-end gap-1">
-                      {/* Absent on single-record responses; 0 is a real answer here. */}
-                      <span className="tabular-nums text-sm">
-                        {company.peopleCount ?? 0}
-                      </span>
-                      <button
-                        type="button"
-                        aria-label="Delete"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setEditing(company)
-                        }}
-                        className="text-muted-foreground hover:text-destructive rounded-sm p-1 transition-colors"
-                      >
-                        <RiDeleteBin6Line className="size-4" aria-hidden />
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+                  {company.name}
+                </button>
+              </TableCell>
+              <TableCell className={cellClass()}>
+                <span className="text-muted-foreground block truncate text-sm">
+                  {company.domain ?? "—"}
+                </span>
+              </TableCell>
+              <TableCell className={cellClass()}>
+                <span className="text-muted-foreground block truncate text-sm">
+                  {company.industry ?? "—"}
+                </span>
+              </TableCell>
+              {/* No per-row delete button. Clicking the row opens the dialog, which has
+                  one; a destructive control on every row is visual noise, sits one
+                  misclick from data loss, and pushes this number out of line with its
+                  own header. */}
+              <TableCell className={cellClass("right")}>
+                {/* Absent on single-record responses; 0 is a real answer here. */}
+                <span className="tabular-nums text-sm">{company.peopleCount ?? 0}</span>
+              </TableCell>
+            </TableRow>
+          ))}
+        </RecordTable>
       )}
 
       {editing && (
         <EditCompanyDialog
           key={editing.id}
           company={editing}
-          pending={remove.isPending}
-          onSave={(draft) =>
-            updateCompany(editing.id, companyUpdateBody(draft)).then(async () => {
-              await queryClient.invalidateQueries({ queryKey: ["companies"] })
-              await queryClient.invalidateQueries({ queryKey: ["people"] })
-            })
-          }
-          onDelete={() => {
-            remove.mutate(editing.id, { onSuccess: onEditClosed })
-          }}
-          onClose={onEditClosed}
+          pending={update.isPending}
+          deleting={remove.isPending}
+          error={update.isError}
+          onSave={(draft) => update.mutateAsync({ id: editing.id, draft })}
+          onDelete={() => remove.mutate(editing.id)}
+          onClose={() => setEditing(null)}
         />
       )}
     </div>
@@ -246,240 +266,107 @@ export function CompaniesTable() {
 }
 
 /**
- * Body for a create: blanks are dropped, so the column is never written at all.
- *
- * Deliberately NOT shared with the update path, despite looking identical. Sharing them
- * is exactly the drift these tests exist to catch, and it was caught: a body that drops
- * blanks is right on create and wrong on update, where a blank means "clear this" and
- * omitting it means "leave it alone". One combined helper silently made the company form
- * unable to empty a single field.
- */
-function newCompanyBody(draft: CompanyDraft) {
-  return {
-    name: draft.name.trim(),
-    ...(draft.domain.trim() ? { domain: draft.domain.trim() } : {}),
-    ...(draft.industry.trim() ? { industry: draft.industry.trim() } : {}),
-    ...(draft.size.trim() ? { size: draft.size.trim() } : {}),
-    ...(draft.location.trim() ? { location: draft.location.trim() } : {}),
-  }
-}
-
-/**
- * Body for an update: every field is sent, blanks included.
- *
- * A blank becomes "" and the SQL's NULLIF turns that into a real NULL, which is the only
- * way a PATCH can remove a value. Omitting the key would leave the existing one alone.
- */
-function companyUpdateBody(draft: CompanyDraft) {
-  return {
-    name: draft.name.trim(),
-    domain: draft.domain.trim(),
-    industry: draft.industry.trim(),
-    size: draft.size.trim(),
-    location: draft.location.trim(),
-  }
-}
-
-function NewCompanyDialog({
-  pending,
-  error,
-  onCreate,
-}: {
-  pending: boolean
-  error: boolean
-  onCreate: (draft: CompanyDraft) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState<CompanyDraft>(EMPTY_COMPANY)
-
-  const canSubmit = draft.name.trim().length > 0 && !pending
-
-  function close() {
-    setOpen(false)
-    setDraft(EMPTY_COMPANY)
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
-      {/* Base UI takes a custom trigger through render={...}. asChild is Radix. */}
-      <DialogTrigger
-        render={
-          <Button>
-            <RiAddLine aria-hidden data-icon="inline-start" />
-            New company
-          </Button>
-        }
-      />
-
-      <DialogContent>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (!canSubmit) return
-            onCreate(draft)
-            close()
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>New company</DialogTitle>
-            <DialogDescription>
-              Only a name is required. Everything else can wait.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="my-4">
-            <CompanyFormFields draft={draft} onChange={setDraft} idPrefix="new-company" />
-          </div>
-
-          <DialogFooter>
-            {error && (
-              <p role="alert" className="text-destructive mr-auto text-sm">
-                Could not save. Try again.
-              </p>
-            )}
-            <DialogClose
-              render={
-                <Button variant="outline" type="button">
-                  Cancel
-                </Button>
-              }
-            />
-            <Button type="submit" disabled={!canSubmit}>
-              {pending && <Spinner data-icon="inline-start" />}
-              {pending ? "Saving…" : "Create"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-/**
  * Edit or delete one company.
  *
- * Both existed as API calls with no button, the same gap the lead form had. The clearing
- * rules are the ones the Go test in internal/dbstore pins: a blank field is sent as ""
- * and the SQL's NULLIF turns that into a real NULL, so emptying a domain removes it
+ * The clearing rules are the ones in components/forms/record-form: a blank field is sent
+ * as "" and the SQL's NULLIF turns that into a real NULL, so emptying a domain removes it
  * rather than storing an empty string that renders as a blank link.
  */
 function EditCompanyDialog({
   company,
   pending,
+  deleting,
+  error,
   onSave,
   onDelete,
   onClose,
 }: {
   company: Company
   pending: boolean
-  onSave: (draft: CompanyDraft) => Promise<unknown>
+  deleting: boolean
+  error: boolean
+  onSave: (draft: Draft) => Promise<unknown>
   onDelete: () => void
   onClose: () => void
 }) {
-  const [draft, setDraft] = useState<CompanyDraft>({
+  const [draft, setDraft] = useState<Draft>({
     name: company.name,
     domain: company.domain ?? "",
     industry: company.industry ?? "",
     size: company.size ?? "",
     location: company.location ?? "",
   })
-  const [saving, setSaving] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  const [error, setError] = useState(false)
+  const [failed, setFailed] = useState(false)
 
-  const canSubmit = draft.name.trim().length > 0 && !saving
-  const contacts = company.peopleCount
+  const contacts = company.peopleCount ?? 0
+
+  if (confirmingDelete) {
+    return (
+      <Dialog open onOpenChange={(next) => !next && onClose()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {company.name}?</DialogTitle>
+            <DialogDescription>
+              {contacts
+                ? `${contacts} ${contacts === 1 ? "lead is" : "leads are"} linked here and will be kept — they simply stop belonging to this company. Nothing is destroyed.`
+                : "This hides the company from the workspace. Nothing is destroyed."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmingDelete(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" disabled={deleting} onClick={onDelete}>
+              {deleting && <Spinner data-icon="inline-start" />}
+              {deleting ? "Deleting…" : "Delete company"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+  }
 
   return (
-    <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent>
-        {confirmingDelete ? (
-          <>
-            <DialogHeader>
-              <DialogTitle>Delete {company.name}?</DialogTitle>
-              <DialogDescription>
-                {contacts
-                  ? `${contacts} ${contacts === 1 ? "lead is" : "leads are"} linked to this company and will be kept — they simply stop belonging to it. Nothing is destroyed.`
-                  : "This hides the company from the workspace. Nothing is destroyed."}
-              </DialogDescription>
-            </DialogHeader>
-
-            <DialogFooter className="mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setConfirmingDelete(false)}
-                disabled={pending}
-              >
-                Cancel
-              </Button>
-              <Button variant="destructive" disabled={pending} onClick={onDelete}>
-                {pending && <Spinner data-icon="inline-start" />}
-                {pending ? "Deleting…" : "Delete company"}
-              </Button>
-            </DialogFooter>
-          </>
-        ) : (
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault()
-              if (!canSubmit) return
-              setSaving(true)
-              setError(false)
-              try {
-                await onSave(draft)
-                onClose()
-              } catch {
-                setError(true)
-              } finally {
-                setSaving(false)
-              }
-            }}
-          >
-            <DialogHeader>
-              <DialogTitle>Edit {company.name}</DialogTitle>
-              <DialogDescription>
-                Clearing a field removes it rather than leaving it blank.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="my-4">
-              <CompanyFormFields
-                draft={draft}
-                onChange={setDraft}
-                idPrefix={`edit-${company.id}`}
-              />
-            </div>
-
-            <DialogFooter>
-              {error && (
-                <p role="alert" className="text-destructive mr-auto text-sm">
-                  Could not save. Try again.
-                </p>
-              )}
-              <Button
-                variant="ghost"
-                type="button"
-                className="text-destructive mr-auto"
-                onClick={() => setConfirmingDelete(true)}
-              >
-                <RiDeleteBin6Line aria-hidden data-icon="inline-start" />
-                Delete
-              </Button>
-              <DialogClose
-                render={
-                  <Button variant="outline" type="button">
-                    Cancel
-                  </Button>
-                }
-              />
-              <Button type="submit" disabled={!canSubmit}>
-                {saving && <Spinner data-icon="inline-start" />}
-                {saving ? "Saving…" : "Save changes"}
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
-      </DialogContent>
-    </Dialog>
+    <RecordDialog
+      open
+      onOpenChange={(next) => !next && onClose()}
+      title={`Edit ${company.name}`}
+      description="Clearing a field removes it rather than leaving it blank."
+      fields={
+        <CompanyFormFields
+          draft={draft}
+          onChange={setDraft}
+          idPrefix={`edit-${company.id}`}
+        />
+      }
+      submitLabel="Save changes"
+      pending={pending}
+      error={error || failed}
+      canSubmit={isSubmittable(draft, REQUIRED)}
+      onSubmit={async () => {
+        setFailed(false)
+        try {
+          await onSave(draft)
+        } catch {
+          setFailed(true)
+        }
+      }}
+      footerAction={
+        <Button
+          variant="destructive"
+          type="button"
+          className="mr-auto"
+          onClick={() => setConfirmingDelete(true)}
+        >
+          Delete
+        </Button>
+      }
+    />
   )
 }
