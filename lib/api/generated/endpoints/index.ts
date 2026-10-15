@@ -1,9 +1,10 @@
-export type { HTTPStatusCode1xx } from './default/default';
-export type { HTTPStatusCode2xx } from './default/default';
-export type { HTTPStatusCode3xx } from './default/default';
-export type { HTTPStatusCode4xx } from './default/default';
-export type { HTTPStatusCode5xx } from './default/default';
-export type { HTTPStatusCodes } from './default/default';
+export type { HTTPStatusCode1xx } from './activity/activity';
+export type { HTTPStatusCode2xx } from './activity/activity';
+export type { HTTPStatusCode3xx } from './activity/activity';
+export type { HTTPStatusCode4xx } from './activity/activity';
+export type { HTTPStatusCode5xx } from './activity/activity';
+export type { HTTPStatusCodes } from './activity/activity';
+export * from './activity/activity';
 export * from './default/default';
 export * from './people/people';
 export * from './realtime/realtime';

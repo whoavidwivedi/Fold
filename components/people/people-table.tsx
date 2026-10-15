@@ -27,6 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { StageBadge } from "@/components/people/fields"
+import { RecordDrawer } from "@/components/people/record-drawer"
 
 const PAGE_SIZE = 50
 
@@ -44,6 +45,11 @@ export function PeopleTable() {
   const [stage, setStage] = useState("")
   const [cursor, setCursor] = useState<string | undefined>()
   const [pageIndex, setPageIndex] = useState(0)
+
+  // Which record the drawer is showing. Null means closed. Not in the URL yet — a
+  // linked record view is worth doing properly, with its own route, rather than
+  // bolting a search param onto a modal.
+  const [openId, setOpenId] = useState<string | null>(null)
 
   // The cursor stack makes Back work. Keyset pagination has no page number, so
   // remembering the cursor that produced each page is the only way to go backwards.
@@ -78,12 +84,20 @@ export function PeopleTable() {
       {
         accessorKey: "lastName",
         header: "Lead",
+        // The row itself is clickable for the mouse, but a <tr> is not a control: no
+        // focus, no Enter, and it disappears from a screen reader's table navigation if
+        // you give it role="button". So the accessible control is a real button here,
+        // and the row handler below is the pointer shortcut that mirrors it.
         cell: ({ row }) => (
-          <span className="block truncate font-medium">
+          <button
+            type="button"
+            onClick={() => setOpenId(row.original.id)}
+            className="-my-1 block max-w-full truncate px-1 text-left font-medium hover:underline underline-offset-4 focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+          >
             {[row.original.firstName, row.original.lastName]
               .filter(Boolean)
               .join(" ") || "Unnamed"}
-          </span>
+          </button>
         ),
       },
       {
@@ -125,6 +139,8 @@ export function PeopleTable() {
         },
       },
     ],
+    // setOpenId is a setState function, so it is stable across renders and the empty
+    // dependency list is correct rather than merely convenient.
     [],
   )
 
@@ -253,7 +269,8 @@ export function PeopleTable() {
                   return (
                     <TableRow
                       key={row.id}
-                      className="absolute grid w-full transition-colors hover:bg-muted/50"
+                      onClick={() => setOpenId(row.original.id)}
+                      className="absolute grid w-full cursor-pointer transition-colors hover:bg-muted/50"
                       style={{
                         gridTemplateColumns: COLUMN_WIDTHS,
                         height: virtualRow.size,
@@ -276,22 +293,30 @@ export function PeopleTable() {
         <ul className="divide-border divide-y overflow-hidden rounded-lg border md:hidden">
           {people.map((person) => (
             <li key={person.id} className="flex flex-col gap-1 p-3">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="truncate font-medium">
-                  {[person.firstName, person.lastName].filter(Boolean).join(" ") ||
-                    "Unnamed"}
+              {/* Spans, not divs: a button's content model is phrasing content only.
+                  The utility classes lay them out identically. */}
+              <button
+                type="button"
+                onClick={() => setOpenId(person.id)}
+                className="flex w-full flex-col gap-1 text-left"
+              >
+                <span className="flex items-baseline justify-between gap-2">
+                  <span className="truncate font-medium">
+                    {[person.firstName, person.lastName].filter(Boolean).join(" ") ||
+                      "Unnamed"}
+                  </span>
+                  <StageBadge stage={person.lifecycleStage} />
                 </span>
-                <StageBadge stage={person.lifecycleStage} />
-              </div>
-              {person.email && (
-                <span className="text-muted-foreground truncate text-sm">
-                  {person.email}
+                {person.email && (
+                  <span className="text-muted-foreground truncate text-sm">
+                    {person.email}
+                  </span>
+                )}
+                <span className="text-muted-foreground truncate text-xs">
+                  {person.source ?? "No source"}
+                  {person.score > 0 && ` · score ${person.score}`}
                 </span>
-              )}
-              <span className="text-muted-foreground truncate text-xs">
-                {person.source ?? "No source"}
-                {person.score > 0 && ` · score ${person.score}`}
-              </span>
+              </button>
             </li>
           ))}
         </ul>
@@ -323,6 +348,8 @@ export function PeopleTable() {
           </Button>
         </div>
       </div>
+
+      <RecordDrawer personId={openId} onClose={() => setOpenId(null)} />
     </div>
   )
 }

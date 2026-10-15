@@ -100,9 +100,25 @@ The highest-value section. These have all cost real time.
   supported in it. It runs on Node. Use it only for optimistic redirects —
   `getCookieCache` is explicitly **not** a security check. Real authz is in the Go DAL.
 - **Never put SSE on Vercel Hobby** — 300s hard function cap.
-- `cookies()`, `headers()`, `params`, `searchParams` are all **async** in Next 16.
-- `next lint` was removed. `eslint` runs separately; `next build` no longer lints.
+- **`cookies()`, `headers()`, `params`, `searchParams` are all **async** in Next 16.
+- **Never declare `Status int \`status:"..."\`` on a Huma output struct.** It overrides
+  `DefaultStatus` on the Operation, and if you forget to assign it the handler panics with
+  `invalid WriteHeader code 0` — which surfaces as a dropped connection (curl shows `000`),
+  not as an error. Set `DefaultStatus` on the Operation, like `internal/person` does.
+- **A Huma input field cannot be both `path` and `query`.** A stray `query:""` wins and the
+  parameter vanishes from the OpenAPI document, so orval rejects the spec with "needs to be
+  defined as a path parameter". Reordering the struct does not help — check for a leftover
+  `query` tag first.
+- **Only query inside `platform.Tenant`.** A `GetX` called on the pool has no
+  `app.workspace_id`, RLS matches nothing, and the handler reports 404 for a row that
+  demonstrably exists. The existence check belongs inside the same transaction as the write.
+- **`next lint` was removed. `eslint` runs separately; `next build` no longer lints.
 - `images.domains` is deprecated → `images.remotePatterns`. `qualities` now defaults to
   `[75]` only.
 - Reusing an existing util is a hard requirement. **Reimplementing an existing helper is
   the most common defect in AI-authored changes here.** Grep before you write.
+- **Do not put `role="button"` on a `<tr>`.** It erases the row from table navigation for
+  screen readers, and `getByRole("row")` in the smoke tests stops matching. Keep the row a
+  row and put a real `<button>` in the first cell; a `onClick` on the `<tr>` is a fine
+  pointer shortcut alongside it. Remember `<button>` takes phrasing content only — spans,
+  never `<div>`s.

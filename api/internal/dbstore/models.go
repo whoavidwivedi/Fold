@@ -12,6 +12,22 @@ import (
 	"github.com/google/uuid"
 )
 
+type Account struct {
+	ID                    uuid.UUID      `json:"id"`
+	AccountID             string         `json:"account_id"`
+	ProviderID            string         `json:"provider_id"`
+	UserID                uuid.UUID      `json:"user_id"`
+	AccessToken           sql.NullString `json:"access_token"`
+	RefreshToken          sql.NullString `json:"refresh_token"`
+	IDToken               sql.NullString `json:"id_token"`
+	AccessTokenExpiresAt  sql.NullTime   `json:"access_token_expires_at"`
+	RefreshTokenExpiresAt sql.NullTime   `json:"refresh_token_expires_at"`
+	Scope                 sql.NullString `json:"scope"`
+	Password              sql.NullString `json:"password"`
+	CreatedAt             time.Time      `json:"created_at"`
+	UpdatedAt             time.Time      `json:"updated_at"`
+}
+
 type Activity struct {
 	ID          uuid.UUID       `json:"id"`
 	WorkspaceID uuid.UUID       `json:"workspace_id"`
@@ -28,88 +44,6 @@ type ActivityTarget struct {
 	TargetPersonID  uuid.NullUUID `json:"target_person_id"`
 	TargetCompanyID uuid.NullUUID `json:"target_company_id"`
 	TargetDealID    uuid.NullUUID `json:"target_deal_id"`
-}
-
-type AuthAccount struct {
-	ID                    uuid.UUID      `json:"id"`
-	AccountID             string         `json:"account_id"`
-	ProviderID            string         `json:"provider_id"`
-	UserID                uuid.UUID      `json:"user_id"`
-	AccessToken           sql.NullString `json:"access_token"`
-	RefreshToken          sql.NullString `json:"refresh_token"`
-	IDToken               sql.NullString `json:"id_token"`
-	AccessTokenExpiresAt  sql.NullTime   `json:"access_token_expires_at"`
-	RefreshTokenExpiresAt sql.NullTime   `json:"refresh_token_expires_at"`
-	Scope                 sql.NullString `json:"scope"`
-	Password              sql.NullString `json:"password"`
-	CreatedAt             time.Time      `json:"created_at"`
-	UpdatedAt             time.Time      `json:"updated_at"`
-}
-
-type AuthInvitation struct {
-	ID             uuid.UUID      `json:"id"`
-	OrganizationId uuid.UUID      `json:"organizationId"`
-	Email          string         `json:"email"`
-	Role           sql.NullString `json:"role"`
-	Status         string         `json:"status"`
-	InviterId      uuid.UUID      `json:"inviterId"`
-	ExpiresAt      time.Time      `json:"expires_at"`
-	CreatedAt      time.Time      `json:"created_at"`
-}
-
-type AuthJwk struct {
-	ID         uuid.UUID `json:"id"`
-	PublicKey  string    `json:"public_key"`
-	PrivateKey string    `json:"private_key"`
-	CreatedAt  time.Time `json:"created_at"`
-}
-
-type AuthMember struct {
-	ID             uuid.UUID `json:"id"`
-	OrganizationId uuid.UUID `json:"organizationId"`
-	UserId         uuid.UUID `json:"userId"`
-	Role           string    `json:"role"`
-	CreatedAt      time.Time `json:"created_at"`
-}
-
-type AuthOrganization struct {
-	ID        uuid.UUID      `json:"id"`
-	Name      string         `json:"name"`
-	Slug      string         `json:"slug"`
-	Logo      sql.NullString `json:"logo"`
-	Metadata  sql.NullString `json:"metadata"`
-	CreatedAt time.Time      `json:"created_at"`
-}
-
-type AuthSession struct {
-	ID                   uuid.UUID      `json:"id"`
-	Token                string         `json:"token"`
-	UserId               uuid.UUID      `json:"userId"`
-	ExpiresAt            time.Time      `json:"expires_at"`
-	IpAddress            sql.NullString `json:"ip_address"`
-	UserAgent            sql.NullString `json:"user_agent"`
-	ActiveOrganizationId uuid.NullUUID  `json:"activeOrganizationId"`
-	CreatedAt            time.Time      `json:"created_at"`
-	UpdatedAt            time.Time      `json:"updated_at"`
-}
-
-type AuthUser struct {
-	ID            uuid.UUID      `json:"id"`
-	Name          string         `json:"name"`
-	Email         string         `json:"email"`
-	EmailVerified bool           `json:"emailVerified"`
-	Image         sql.NullString `json:"image"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
-}
-
-type AuthVerification struct {
-	ID         uuid.UUID `json:"id"`
-	Identifier string    `json:"identifier"`
-	Value      string    `json:"value"`
-	ExpiresAt  time.Time `json:"expires_at"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 type Company struct {
@@ -178,6 +112,35 @@ type FieldDefinition struct {
 	UpdatedAt   time.Time       `json:"updated_at"`
 }
 
+type Invitation struct {
+	ID             uuid.UUID      `json:"id"`
+	OrganizationID uuid.UUID      `json:"organization_id"`
+	Email          string         `json:"email"`
+	Role           sql.NullString `json:"role"`
+	Status         string         `json:"status"`
+	InviterID      uuid.UUID      `json:"inviter_id"`
+	ExpiresAt      time.Time      `json:"expires_at"`
+	CreatedAt      time.Time      `json:"created_at"`
+}
+
+type Jwk struct {
+	ID         uuid.UUID    `json:"id"`
+	PublicKey  string       `json:"public_key"`
+	PrivateKey string       `json:"private_key"`
+	Alg        string       `json:"alg"`
+	Crv        string       `json:"crv"`
+	ExpiresAt  sql.NullTime `json:"expires_at"`
+	CreatedAt  time.Time    `json:"created_at"`
+}
+
+type Member struct {
+	ID             uuid.UUID `json:"id"`
+	OrganizationID uuid.UUID `json:"organization_id"`
+	UserID         uuid.UUID `json:"user_id"`
+	Role           string    `json:"role"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
 type ObjectDefinition struct {
 	ID           uuid.UUID      `json:"id"`
 	WorkspaceID  uuid.UUID      `json:"workspace_id"`
@@ -200,6 +163,15 @@ type ObjectRecord struct {
 	CreatedAt   time.Time       `json:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at"`
 	DeletedAt   sql.NullTime    `json:"deleted_at"`
+}
+
+type Organization struct {
+	ID        uuid.UUID      `json:"id"`
+	Name      string         `json:"name"`
+	Slug      string         `json:"slug"`
+	Logo      sql.NullString `json:"logo"`
+	Metadata  sql.NullString `json:"metadata"`
+	CreatedAt time.Time      `json:"created_at"`
 }
 
 type Person struct {
@@ -250,6 +222,18 @@ type SavedView struct {
 	UpdatedAt   time.Time       `json:"updated_at"`
 }
 
+type Session struct {
+	ID                   uuid.UUID      `json:"id"`
+	Token                string         `json:"token"`
+	UserID               uuid.UUID      `json:"user_id"`
+	ExpiresAt            time.Time      `json:"expires_at"`
+	IpAddress            sql.NullString `json:"ip_address"`
+	UserAgent            sql.NullString `json:"user_agent"`
+	ActiveOrganizationID uuid.NullUUID  `json:"active_organization_id"`
+	CreatedAt            time.Time      `json:"created_at"`
+	UpdatedAt            time.Time      `json:"updated_at"`
+}
+
 type Stage struct {
 	ID          uuid.UUID      `json:"id"`
 	WorkspaceID uuid.UUID      `json:"workspace_id"`
@@ -275,4 +259,23 @@ type TimelineActivity struct {
 	TypeSnapshot           json.RawMessage `json:"type_snapshot"`
 	Properties             json.RawMessage `json:"properties"`
 	ActorID                uuid.NullUUID   `json:"actor_id"`
+}
+
+type User struct {
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	Email         string         `json:"email"`
+	EmailVerified bool           `json:"email_verified"`
+	Image         sql.NullString `json:"image"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+}
+
+type Verification struct {
+	ID         uuid.UUID `json:"id"`
+	Identifier string    `json:"identifier"`
+	Value      string    `json:"value"`
+	ExpiresAt  time.Time `json:"expires_at"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }

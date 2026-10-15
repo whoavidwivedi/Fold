@@ -165,6 +165,9 @@ function invalidate(
     case "person":
       queryClient.invalidateQueries({ queryKey: ["people"] })
       queryClient.invalidateQueries({ queryKey: ["person", id] })
+      // Logging an activity notifies with entity "person" — the record's feed changed,
+      // not the record itself. Without this an open drawer shows a stale timeline.
+      queryClient.invalidateQueries({ queryKey: ["timeline", id] })
       break
     case "deal":
       queryClient.invalidateQueries({ queryKey: ["deals"] })

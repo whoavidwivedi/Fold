@@ -19,6 +19,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
 
+	"fold/api/internal/activity"
 	"fold/api/internal/auth"
 	"fold/api/internal/person"
 	"fold/api/internal/platform"
@@ -199,6 +200,7 @@ func buildAPI(
 
 	realtime.Register(api, hub, secret, authenticate)
 	person.Register(api, db, authenticate)
+	activity.Register(api, db, authenticate)
 
 	return api, nil
 }
