@@ -89,7 +89,7 @@ func (q *Queries) CreateActivity(ctx context.Context, arg CreateActivityParams) 
 }
 
 const getPersonSummary = `-- name: GetPersonSummary :one
-SELECT first_name, last_name
+SELECT first_name, last_name, lifecycle_stage
 FROM person
 WHERE workspace_id = $1
   AND id = $2
@@ -102,15 +102,17 @@ type GetPersonSummaryParams struct {
 }
 
 type GetPersonSummaryRow struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
+	FirstName      string `json:"first_name"`
+	LastName       string `json:"last_name"`
+	LifecycleStage string `json:"lifecycle_stage"`
 }
 
-// Exists so the drawer can title itself without a second round trip.
+// Exists so the drawer can title itself without a second round trip, and so a stage change
+// can be logged with the name it had before the edit.
 func (q *Queries) GetPersonSummary(ctx context.Context, arg GetPersonSummaryParams) (GetPersonSummaryRow, error) {
 	row := q.db.QueryRowContext(ctx, getPersonSummary, arg.WorkspaceID, arg.PersonID)
 	var i GetPersonSummaryRow
-	err := row.Scan(&i.FirstName, &i.LastName)
+	err := row.Scan(&i.FirstName, &i.LastName, &i.LifecycleStage)
 	return i, err
 }
 

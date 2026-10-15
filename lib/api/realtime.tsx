@@ -169,9 +169,6 @@ function invalidate(
       // not the record itself. Without this an open drawer shows a stale timeline.
       queryClient.invalidateQueries({ queryKey: ["timeline", id] })
       break
-    case "deal":
-      queryClient.invalidateQueries({ queryKey: ["deals"] })
-      break
     default:
       // An entity we do not know about yet. Invalidate everything rather than guess.
       queryClient.invalidateQueries()

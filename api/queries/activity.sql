@@ -69,8 +69,9 @@ WHERE workspace_id = sqlc.arg(workspace_id)
   AND linked_record_id = sqlc.arg(record_id);
 
 -- name: GetPersonSummary :one
--- Exists so the drawer can title itself without a second round trip.
-SELECT first_name, last_name
+-- Exists so the drawer can title itself without a second round trip, and so a stage change
+-- can be logged with the name it had before the edit.
+SELECT first_name, last_name, lifecycle_stage
 FROM person
 WHERE workspace_id = sqlc.arg(workspace_id)
   AND id = sqlc.arg(person_id)

@@ -121,6 +121,37 @@ test.describe("record drawer", () => {
     await expect(page.getByRole("button", { name: /log note/i })).toBeDisabled()
   })
 
+  test("a stage change lands in the timeline, but a no-op edit does not", async ({ page }) => {
+    const id = await signUp(page)
+    const personId = await seedLead(page, id.stamp)
+
+    await page.getByRole("row").filter({ hasText: "Ines Drawer" }).click()
+    await expect(page.getByText("No activity yet")).toBeVisible()
+
+    // A stage move is the most important thing that happens to a lead. If PATCH does not
+    // write an activity, the feed silently omits every qualification decision.
+    await page.request.patch(`${API}/v1/persons/${personId}`, {
+      headers: await authHeaders(page),
+      data: { lifecycleStage: "customer" },
+    })
+    await expect(page.getByText("Stage change")).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText("new").first()).toBeVisible()
+    await expect(page.getByText("customer").first()).toBeVisible()
+
+    // Re-sending the same stage is not a change, and a non-stage edit is not a stage
+    // change. Neither may add a row, or the feed fills with noise and stops being read.
+    await page.request.patch(`${API}/v1/persons/${personId}`, {
+      headers: await authHeaders(page),
+      data: { lifecycleStage: "customer" },
+    })
+    await page.request.patch(`${API}/v1/persons/${personId}`, {
+      headers: await authHeaders(page),
+      data: { jobTitle: "Regional Manager" },
+    })
+    await page.waitForTimeout(1200)
+    await expect(page.getByText("Stage change")).toHaveCount(1)
+  })
+
   test("an activity logged elsewhere appears without a reload", async ({ page }) => {
     const id = await signUp(page)
     // The same id the drawer will be opened on. Logging against a different record with

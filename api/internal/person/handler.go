@@ -8,12 +8,14 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 
+	"fold/api/internal/activity"
 	"fold/api/internal/auth"
 	"fold/api/internal/dbstore"
 	"fold/api/internal/platform"
@@ -199,6 +201,10 @@ type GetInput struct {
 type DeleteInput struct {
 	ID uuid.UUID `path:"id" doc:"Person id"`
 }
+
+// errNoPerson distinguishes "not in this workspace" from a real failure, so the handler
+// can answer 404 instead of 500.
+var errNoPerson = errors.New("person not found in workspace")
 
 // Register wires the person routes onto the API.
 func Register(api huma.API, db *platform.DB, mw func(huma.Context, func(huma.Context))) {
@@ -396,6 +402,25 @@ func Register(api huma.API, db *platform.DB, mw func(huma.Context, func(huma.Con
 		err = db.Tenant(ctx, p.WorkspaceID, func(tx *sql.Tx) error {
 			qtx := queries.WithTx(tx)
 
+			// Read the stage the person is in *before* the update. Postgres 17 cannot
+			// return OLD from RETURNING, so this is the only way to tell whether the
+			// stage actually moved — and it costs nothing when the caller did not send
+			// one, which is the common case.
+			var fromStage string
+			if in.Body.LifecycleStage != nil {
+				row, err := qtx.GetPersonSummary(ctx, dbstore.GetPersonSummaryParams{
+					WorkspaceID: workspaceID,
+					PersonID:    in.ID,
+				})
+				if err != nil {
+					if errors.Is(err, sql.ErrNoRows) {
+						return errNoPerson
+					}
+					return err
+				}
+				fromStage = row.LifecycleStage
+			}
+
 			row, err := qtx.UpdatePerson(ctx, dbstore.UpdatePersonParams{
 				WorkspaceID:    workspaceID,
 				PersonID:       in.ID,
@@ -415,6 +440,35 @@ func Register(api huma.API, db *platform.DB, mw func(huma.Context, func(huma.Con
 			}
 			updated = row
 
+			// A stage move is the single most important thing that happens to a lead, and
+			// the timeline is where a rep looks for it. Without this the feed silently
+			// omits every qualification decision, which is the whole point of the log.
+			if fromStage != "" && fromStage != *in.Body.LifecycleStage {
+				payload, err := json.Marshal(map[string]any{
+					"fromStage": fromStage,
+					"toStage":   *in.Body.LifecycleStage,
+				})
+				if err != nil {
+					return err
+				}
+				userID, err := uuid.Parse(p.UserID)
+				if err != nil {
+					return huma.Error500InternalServerError("malformed user id in token")
+				}
+				name := activity.JoinName(row.FirstName, row.LastName)
+				if _, err := (activity.Log{
+					WorkspaceID: workspaceID,
+					PersonID:    in.ID,
+					RecordName:  name,
+					Kind:        activity.KindStage,
+					ActorID:     &userID,
+					HappensAt:   time.Now().UTC(),
+					Properties:  payload,
+				}).Write(ctx, qtx); err != nil {
+					return err
+				}
+			}
+
 			if _, err := qtx.RecordEvent(ctx, dbstore.RecordEventParams{
 				WorkspaceID: workspaceID,
 				Event:       "person.updated",
@@ -430,8 +484,11 @@ func Register(api huma.API, db *platform.DB, mw func(huma.Context, func(huma.Con
 				ID:     in.ID.String(),
 			})
 		})
-		if err != nil {
+		if errors.Is(err, errNoPerson) {
 			return nil, huma.Error404NotFound("person not found")
+		}
+		if err != nil {
+			return nil, huma.Error500InternalServerError("could not update person", err)
 		}
 
 		return &PersonOutput{Body: *fromUpdateRow(updated)}, nil
