@@ -23,6 +23,7 @@ import { cn } from "cn"
 
 const NAV = [
   { href: "/people", label: "Leads" },
+  { href: "/companies", label: "Companies" },
   { href: "/deals", label: "Pipeline" },
   { href: "/tasks", label: "Tasks" },
   { href: "/reports", label: "Reports" },

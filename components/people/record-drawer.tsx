@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   RiArrowRightLine,
@@ -11,7 +11,8 @@ import {
 } from "@remixicon/react"
 
 import { listTimeline, logActivity } from "@/lib/api/generated/endpoints/activity/activity"
-import { getPerson } from "@/lib/api/generated/endpoints/people/people"
+import { listCompanies } from "@/lib/api/generated/endpoints/companies/companies"
+import { getPerson, updatePerson } from "@/lib/api/generated/endpoints/people/people"
 import type { Entry, LogBody, Person } from "@/lib/api/generated/model"
 
 import { Button } from "@/components/ui/button"
@@ -31,6 +32,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
@@ -38,6 +46,10 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { StageBadge } from "@/components/people/fields"
 
 const PAGE_SIZE = 50
+
+// Sentinel for "no company". It cannot be the empty string: Base UI treats "" as an
+// unset value, so selecting it would not fire onValueChange at all.
+const NONE = "__none__"
 
 type Kind = NonNullable<LogBody["kind"]>
 
@@ -150,6 +162,10 @@ function DrawerBody({ personId }: { personId: string }) {
           {person.data && <StageBadge stage={person.data.lifecycleStage} />}
         </SheetDescription>
       </SheetHeader>
+
+      {person.data && (
+        <CompanyField person={person.data} />
+      )}
 
       <form
         className="flex flex-col gap-3"
@@ -341,4 +357,79 @@ function relativeTime(iso: string) {
   }
 
   return then.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+}
+/**
+ * Assign or clear the lead's company.
+ *
+ * This is the other half of the company work: without it a lead can belong to a company
+ * but there is no way to put it there, and person.company_id is a column nothing writes.
+ *
+ * Options come from the company list, which the drawer already has cached after the
+ * first visit — so switching between leads does not refetch the dropdown each time.
+ */
+function CompanyField({ person }: { person: Person }) {
+  const queryClient = useQueryClient()
+
+  const companies = useQuery({
+    queryKey: ["companies", { search: "" }],
+    queryFn: async () => {
+      const res = await listCompanies({ limit: 100 })
+      if (res.status !== 200) throw new Error("could not load companies")
+      return res.data
+    },
+    // A workspace with more companies than this gets a searchable picker. Until then, a
+    // 100-row ceiling is cheaper than the combobox it would need.
+    staleTime: 5 * 60_000,
+  })
+
+  const save = useMutation({
+    mutationFn: (companyId: string | undefined) =>
+      // orval types the optional field as nullable; undefined is what "clear it" means.
+      updatePerson(person.id, { companyId: companyId ?? undefined }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["person", person.id] })
+      await queryClient.invalidateQueries({ queryKey: ["people"] })
+    },
+  })
+
+  const current = person.companyId ?? ""
+
+  // Base UI renders SelectValue from the `items` collection, not from the mounted
+  // <SelectItem> children. Without this the trigger shows the raw uuid: technically
+  // correct, completely useless, and it passes every API check. A company picker that
+  // cannot be read is the same bug as a dangling foreign key with extra steps.
+  const options = useMemo(
+    () => [
+      { value: NONE, label: "No company" },
+      ...(companies.data?.items ?? []).map((c) => ({ value: c.id, label: c.name })),
+    ],
+    [companies.data],
+  )
+
+  return (
+    <Field>
+      <FieldLabel htmlFor={`company-${person.id}`}>Company</FieldLabel>
+      <Select
+        items={options}
+        value={current}
+        onValueChange={(v) => save.mutate(v && v !== NONE ? v : undefined)}
+      >
+        <SelectTrigger id={`company-${person.id}`} size="sm" className="w-full">
+          <SelectValue placeholder="No company" />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {save.isError && (
+        <p role="alert" className="text-destructive text-sm">
+          Could not update the company.
+        </p>
+      )}
+    </Field>
+  )
 }
