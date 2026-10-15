@@ -111,7 +111,13 @@ test.describe("lead record", () => {
     await page.getByRole("button", { name: /log email/i }).click()
 
     await expect(page.getByText("Re: quote request")).toBeVisible()
-    await expect(page.getByText("Inbound")).toBeVisible()
+
+    // Scoped to the timeline. Once the entry is written, "Inbound" appears twice — the
+    // composer's direction toggle and the recorded row — so an unscoped getByText is a
+    // strict-mode violation. It only bit in CI because a sheet covered the feed while the
+    // composer was open; the page shows both at once.
+    const feed = page.getByRole("list")
+    await expect(feed.getByText("Inbound")).toBeVisible()
   })
 
   test("an empty note cannot be submitted", async ({ page }) => {
