@@ -226,7 +226,7 @@ func Register(api huma.API, db *platform.DB, mw func(huma.Context, func(huma.Con
 			return nil, err
 		}
 
-		cursorAt, cursorID, err := decodeCursor(in.Cursor)
+		cursorAt, cursorID, err := platform.DecodeCursor(in.Cursor)
 		if err != nil {
 			return nil, huma.Error400BadRequest("invalid cursor")
 		}
@@ -270,7 +270,7 @@ func Register(api huma.API, db *platform.DB, mw func(huma.Context, func(huma.Con
 			// A short page means we reached the end. A full page might still have more.
 			if len(rows) == in.Limit && len(rows) > 0 {
 				last := rows[len(rows)-1]
-				out.NextCursor = encodeCursor(last.CreatedAt, last.ID)
+				out.NextCursor = platform.EncodeCursor(last.CreatedAt, last.ID)
 			}
 			return nil
 		})

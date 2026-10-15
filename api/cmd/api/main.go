@@ -21,6 +21,7 @@ import (
 
 	"fold/api/internal/activity"
 	"fold/api/internal/auth"
+	"fold/api/internal/company"
 	"fold/api/internal/person"
 	"fold/api/internal/platform"
 	"fold/api/internal/realtime"
@@ -200,6 +201,7 @@ func buildAPI(
 
 	realtime.Register(api, hub, secret, authenticate)
 	person.Register(api, db, authenticate)
+	company.Register(api, db, authenticate)
 	activity.Register(api, db, authenticate)
 
 	return api, nil

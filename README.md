@@ -138,14 +138,17 @@ Working today:
 - Multi-tenant workspaces, invitations and roles
 - Person records with runtime-defined custom fields (JSONB — adding a field is a row
   insert, never a migration)
+- Companies, linked to and detached from leads without orphaning either side
 - Full-text search across name, email local part and email domain
 - Keyset pagination, debounced search, stage filters
+- Activity log and timeline: notes, calls, emails and stage changes
 - Realtime updates over SSE with optimistic UI
-- Soft delete, activity event log, saved views schema
+- Soft delete throughout, audit event log
 
 Not built yet: deals and kanban, tasks, the workflow engine, reporting, email/calendar
-integrations. See [`docs/adr/README.md`](docs/adr/README.md) for the plan and the
-deliberate omissions.
+integrations, and the authoring UI for custom fields — the JSONB design works and is
+tested, but there is no screen yet for creating a field. See
+[`docs/adr/README.md`](docs/adr/README.md) for the plan and the deliberate omissions.
 
 ---
 

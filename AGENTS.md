@@ -117,6 +117,12 @@ The highest-value section. These have all cost real time.
   `[75]` only.
 - Reusing an existing util is a hard requirement. **Reimplementing an existing helper is
   the most common defect in AI-authored changes here.** Grep before you write.
+- **Base UI's `Select` renders `SelectValue` from the `items` collection, not from the
+  mounted `<SelectItem>` children.** Omit `items` and the trigger shows the raw value — a
+  uuid in our case. It passes every API check and is unusable. Same family of bug as a
+  dangling foreign key: correct in the data, meaningless on screen.
+- **Huma schema names are global.** Two packages cannot both define `CreateBody`; the
+  `--print-openapi` step panics with `duplicate name`. Resource-prefix new body types.
 - **Do not put `role="button"` on a `<tr>`.** It erases the row from table navigation for
   screen readers, and `getByRole("row")` in the smoke tests stops matching. Keep the row a
   row and put a real `<button>` in the first cell; a `onClick` on the `<tr>` is a fine

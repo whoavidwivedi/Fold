@@ -5,6 +5,7 @@ export type { HTTPStatusCode4xx } from './activity/activity';
 export type { HTTPStatusCode5xx } from './activity/activity';
 export type { HTTPStatusCodes } from './activity/activity';
 export * from './activity/activity';
+export * from './companies/companies';
 export * from './default/default';
 export * from './people/people';
 export * from './realtime/realtime';

@@ -169,6 +169,11 @@ function invalidate(
       // not the record itself. Without this an open drawer shows a stale timeline.
       queryClient.invalidateQueries({ queryKey: ["timeline", id] })
       break
+    case "company":
+      // A person drawer also shows their company, so both keys move together.
+      queryClient.invalidateQueries({ queryKey: ["companies"] })
+      queryClient.invalidateQueries({ queryKey: ["people"] })
+      break
     default:
       // An entity we do not know about yet. Invalidate everything rather than guess.
       queryClient.invalidateQueries()

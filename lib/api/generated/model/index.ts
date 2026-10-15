@@ -6,12 +6,20 @@
  * OpenAPI spec version: 1.0.0
  */
 
+export * from './company';
+export * from './companyCreateBody';
+export * from './companyCreateOutputBody';
+export * from './companyGetOutputBody';
+export * from './companyListOutputBody';
+export * from './companyUpdateBody';
+export * from './companyUpdateOutputBody';
 export * from './createBody';
 export * from './createBodyLifecycleStage';
 export * from './entry';
 export * from './errorDetail';
 export * from './errorModel';
 export * from './event';
+export * from './listCompaniesParams';
 export * from './listPersonsBody';
 export * from './listPersonsParams';
 export * from './listTimelineParams';

@@ -1,6 +1,243 @@
 {
   "components": {
     "schemas": {
+      "Company": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "data": {
+            "description": "Custom field values, keyed by field_definition.key"
+          },
+          "domain": {
+            "description": "Primary web domain, e.g. northwind.test",
+            "type": "string"
+          },
+          "id": {
+            "description": "Stable identifier",
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "linkedinUrl": {
+            "format": "uri",
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "name": {
+            "description": "Legal or trading name",
+            "type": "string"
+          },
+          "peopleCount": {
+            "description": "Contacts linked to this company. Present on list responses only.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "size": {
+            "description": "Headcount band",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "data",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "CompanyCreateBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/CompanyCreateBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "data": {},
+          "domain": {
+            "maxLength": 255,
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "linkedinUrl": {
+            "format": "uri",
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "size": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "CompanyCreateOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/CompanyCreateOutputBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "company": {
+            "$ref": "#/components/schemas/Company"
+          }
+        },
+        "required": [
+          "company"
+        ],
+        "type": "object"
+      },
+      "CompanyGetOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/CompanyGetOutputBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "company": {
+            "$ref": "#/components/schemas/Company"
+          },
+          "peopleCount": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "company",
+          "peopleCount"
+        ],
+        "type": "object"
+      },
+      "CompanyListOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/CompanyListOutputBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Company"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "type": "object"
+      },
+      "CompanyUpdateBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/CompanyUpdateBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "data": {
+            "description": "Merged into existing custom values, not replaced"
+          },
+          "domain": {
+            "maxLength": 255,
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "linkedinUrl": {
+            "format": "uri",
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "size": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CompanyUpdateOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/CompanyUpdateOutputBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "company": {
+            "$ref": "#/components/schemas/Company"
+          }
+        },
+        "required": [
+          "company"
+        ],
+        "type": "object"
+      },
       "CreateBody": {
         "additionalProperties": false,
         "properties": {
@@ -535,6 +772,245 @@
           }
         },
         "summary": "Liveness probe"
+      }
+    },
+    "/v1/companies": {
+      "get": {
+        "description": "Newest first. Keyset-paginated — pass nextCursor back as ?cursor=.",
+        "operationId": "list-companies",
+        "parameters": [
+          {
+            "description": "Matches name or domain, whole words or fragments",
+            "explode": false,
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "description": "Matches name or domain, whole words or fragments",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Exact industry match",
+            "explode": false,
+            "in": "query",
+            "name": "industry",
+            "schema": {
+              "description": "Exact industry match",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque keyset cursor from nextCursor",
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "description": "Opaque keyset cursor from nextCursor",
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "format": "int64",
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyListOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List companies",
+        "tags": [
+          "companies"
+        ]
+      },
+      "post": {
+        "operationId": "create-company",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyCreateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyCreateOutputBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Create a company",
+        "tags": [
+          "companies"
+        ]
+      }
+    },
+    "/v1/companies/{id}": {
+      "delete": {
+        "description": "Hides the company and detaches its contacts, matching what a hard delete would do. The contacts and their history survive; they simply stop belonging to a company.",
+        "operationId": "delete-company",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Soft-delete a company",
+        "tags": [
+          "companies"
+        ]
+      },
+      "get": {
+        "operationId": "get-company",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyGetOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Fetch one company",
+        "tags": [
+          "companies"
+        ]
+      },
+      "patch": {
+        "description": "Omitted nullable fields are left alone. Custom values in `data` are merged, not replaced.",
+        "operationId": "update-company",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyUpdateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyUpdateOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Update a company",
+        "tags": [
+          "companies"
+        ]
       }
     },
     "/v1/persons": {
