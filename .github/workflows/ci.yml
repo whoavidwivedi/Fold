@@ -159,11 +159,21 @@ jobs:
           done
           curl -sf -o /dev/null http://localhost:8080/health || (cat api.log; exit 1)
 
+      # `next start` serves a production build, and each job gets its own runner — the
+      # `web` job's .next does not travel with the checkout. Without this the step fails
+      # with "Could not find a production build in the '.next' directory", which is how
+      # this job sat broken through two green-ish runs before anyone looked.
+      - name: Build Next
+        run: bun run build
+
       - name: Start Next
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8080
           NEXT_PUBLIC_AUTH_URL: http://localhost:3000
           BETTER_AUTH_SECRET: ci-only-secret-change-me-0123456789
+          # 14 tests, 14 sign-ups, one IP. The limiter answers "Too many requests"
+          # mid-suite and three tests fail on a timeout that reads like a hang.
+          BETTER_AUTH_RATE_LIMIT: "off"
           BETTER_AUTH_URL: http://localhost:3000
           DATABASE_URL: postgres://fold_app:fold_app@localhost:5432/postgres?sslmode=disable
         run: |

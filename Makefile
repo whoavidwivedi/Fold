@@ -57,3 +57,10 @@ lint: ## Vet, gofmt check and typecheck
 
 logs: ## Tail the API log
 	tail -f /tmp/fold-api.log
+
+# Mints signed JWTs from a local JWKS, so the API can be driven without Better Auth in
+# the loop. Build-tagged, so it never reaches the shipped binary.
+#   make devjwt DEV_WORKSPACES='<workspaceUuid>:<userUuid>,...'
+DEV_WORKSPACES ?=
+devjwt:
+	cd api && DEV_WORKSPACES='$(DEV_WORKSPACES)' go run -tags devtool ./cmd/devjwt

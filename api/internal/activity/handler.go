@@ -159,44 +159,18 @@ func Register(api huma.API, db *platform.DB, mw func(huma.Context, func(huma.Con
 				return err
 			}
 
-			activity, err := qtx.CreateActivity(ctx, dbstore.CreateActivityParams{
+			entryID, err = Log{
 				WorkspaceID: workspaceID,
+				PersonID:    in.PersonID,
+				RecordName:  JoinName(summary.FirstName, summary.LastName),
 				Kind:        in.Body.Kind,
-				ActorID:     actor,
-				Payload:     payload,
-				HappenedAt:  sql.NullTime{Time: *happensAt, Valid: true},
-			})
+				ActorID:     &userID,
+				HappensAt:   *happensAt,
+				Properties:  payload,
+			}.Write(ctx, qtx)
 			if err != nil {
 				return err
 			}
-
-			if _, err := qtx.LinkActivityToPerson(ctx, dbstore.LinkActivityToPersonParams{
-				ActivityID:  activity.ID,
-				WorkspaceID: workspaceID,
-				PersonID:    dbstore.UUIDArg(&in.PersonID),
-			}); err != nil {
-				return err
-			}
-
-			name := joinName(summary.FirstName, summary.LastName)
-
-			// RETURNING only the id, so sqlc collapses this to a bare uuid.UUID.
-			inserted, err := qtx.InsertTimelineEntry(ctx, dbstore.InsertTimelineEntryParams{
-				WorkspaceID:            workspaceID,
-				ActivityID:             activity.ID,
-				HappensAt:              *happensAt,
-				Kind:                   in.Body.Kind,
-				LinkedRecordID:         dbstore.UUIDArg(&in.PersonID),
-				LinkedObjectMetadata:   "person",
-				LinkedRecordCachedName: dbstore.TextArg(&name),
-				TypeSnapshot:           json.RawMessage(`{"label":"` + in.Body.Kind + `"}`),
-				Properties:             payload,
-				ActorID:                actor,
-			})
-			if err != nil {
-				return err
-			}
-			entryID = inserted
 
 			if _, err := qtx.RecordEvent(ctx, dbstore.RecordEventParams{
 				WorkspaceID: workspaceID,
@@ -314,7 +288,9 @@ func principal(ctx context.Context) (*auth.Principal, uuid.UUID, error) {
 	return p, workspaceID, nil
 }
 
-func joinName(first, last string) string {
+// JoinName is the one place a person's display name is built. The drawer, the timeline's
+// cached name and the stage-change log must all agree, so there is one copy.
+func JoinName(first, last string) string {
 	switch {
 	case first == "" && last == "":
 		return "Unnamed"

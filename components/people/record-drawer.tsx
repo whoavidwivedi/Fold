@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
+  RiArrowRightLine,
   RiChat1Line,
   RiMailLine,
   RiPhoneLine,
@@ -276,7 +277,15 @@ function DrawerBody({ personId }: { personId: string }) {
 
 function TimelineRow({ entry }: { entry: Entry }) {
   const meta = KIND_META[entry.kind] ?? { label: entry.kind, Icon: RiStickyNoteLine }
-  const props = (entry.properties ?? {}) as { body?: string; direction?: string }
+  const props = (entry.properties ?? {}) as {
+    body?: string
+    direction?: string
+    fromStage?: string
+    toStage?: string
+  }
+
+  // A stage change is not prose, so it does not get a note body — it gets the move.
+  const isStageChange = entry.kind === "stage_change" && props.fromStage
 
   return (
     <li className="flex gap-3 py-3">
@@ -293,6 +302,13 @@ function TimelineRow({ entry }: { entry: Entry }) {
             {entry.actorName ?? "Someone"} · {relativeTime(entry.happensAt)}
           </span>
         </p>
+        {isStageChange && (
+          <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm">
+            <StageBadge stage={props.fromStage!} />
+            <RiArrowRightLine className="text-muted-foreground size-3.5" aria-hidden />
+            <StageBadge stage={props.toStage ?? ""} />
+          </p>
+        )}
         {props.body && <p className="mt-0.5 text-sm whitespace-pre-wrap">{props.body}</p>}
       </div>
     </li>

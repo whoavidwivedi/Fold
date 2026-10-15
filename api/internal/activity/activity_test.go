@@ -52,8 +52,8 @@ func TestJoinName(t *testing.T) {
 		{"", "", "Unnamed"},
 	}
 	for _, c := range cases {
-		if got := joinName(c.first, c.last); got != c.want {
-			t.Errorf("joinName(%q, %q) = %q, want %q", c.first, c.last, got, c.want)
+		if got := JoinName(c.first, c.last); got != c.want {
+			t.Errorf("JoinName(%q, %q) = %q, want %q", c.first, c.last, got, c.want)
 		}
 	}
 }
