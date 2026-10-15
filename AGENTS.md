@@ -132,6 +132,9 @@ The highest-value section. These have all cost real time.
   resolves after the clear and writes the *old* token straight back into the cache. `token.ts`
   keeps a generation counter for this. Symptom: switching workspaces twice quickly keeps
   the first workspace, silently, with valid-looking data.
+- **A record is a route, not a sheet.** `/people/[id]` so it can be linked and the
+  browser back button closes it. Reading one stacked three overlays before — list, sheet,
+  edit dialog — and covered the list while you worked.
 - **Look at the screen.** Every crop and overlap fixed in this repo was found by
   screenshotting it — `VISUAL_REVIEW=1 bunx playwright test tests/visual-review.spec.ts`
   writes desktop/tablet/mobile shots of every screen. An assertion has to know what

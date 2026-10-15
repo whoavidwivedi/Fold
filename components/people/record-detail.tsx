@@ -1,14 +1,15 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   RiArrowRightLine,
   RiEditLine,
-  RiChat1Line,
   RiMailLine,
   RiPhoneLine,
   RiStickyNoteLine,
+  RiChat1Line,
 } from "@remixicon/react"
 
 import { listTimeline, logActivity } from "@/lib/api/generated/endpoints/activity/activity"
@@ -45,14 +46,6 @@ import {
 } from "@/components/ui/empty"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -70,6 +63,19 @@ import {
   updateBody,
   type Draft,
 } from "@/components/forms/record-form"
+
+/**
+ * One lead, as a page.
+ *
+ * It was a side sheet, which meant a record could not be linked to, the browser back
+ * button did nothing, and reading one meant stacking three overlays: list, sheet, edit
+ * dialog. The content — a composer and a timeline that only ever grows older — is
+ * something you stay on rather than glance at, so it is a route now.
+ *
+ * The timeline still loads older entries on demand rather than all at once: a long-lived
+ * lead can have hundreds, and a record page that renders every one on open is slow for no
+ * reason.
+ */
 
 const PAGE_SIZE = 50
 
@@ -90,42 +96,7 @@ const KIND_META: Record<string, { label: string; Icon: typeof RiStickyNoteLine }
   stage_change: { label: "Stage change", Icon: RiChat1Line },
 }
 
-export function RecordDrawer({
-  personId,
-  onClose,
-}: {
-  personId: string | null
-  onClose: () => void
-}) {
-  return (
-    <Sheet open={personId !== null} onOpenChange={(open) => !open && onClose()}>
-      {/* Keyed so switching records resets the composer instead of carrying a half-typed
-          note from the lead you just closed into the one you just opened. */}
-      {personId && (
-        <SheetContent
-          key={personId}
-          side="right"
-          // The drawer is an occasional surface, so it gets a standard animation — the
-          // iOS curve, which is what --ease-drawer is for.
-          // The sheet owns the horizontal padding. SheetHeader and SheetFooter bring
-          // their own p-4, which is why everything between them used to sit flush
-          // against the edge and needed negative margins to pull back into line.
-          className="w-full px-4 ease-drawer sm:max-w-lg"
-        >
-          <DrawerBody personId={personId} onClose={onClose} />
-        </SheetContent>
-      )}
-    </Sheet>
-  )
-}
-
-function DrawerBody({
-  personId,
-  onClose,
-}: {
-  personId: string
-  onClose: () => void
-}) {
+export function RecordDetail({ personId }: { personId: string }) {
   const queryClient = useQueryClient()
 
   const person = useQuery({
@@ -135,6 +106,9 @@ function DrawerBody({
       if (res.status !== 200) throw new Error("could not load person")
       return res.data as Person
     },
+    // The realtime stream invalidates this key, so the header stays current while
+    // someone else works the same lead.
+    retry: false,
   })
 
   // Infinite rather than paged: a timeline only ever grows older, so there is no "next"
@@ -176,37 +150,58 @@ function DrawerBody({
   const canSubmit = body.trim().length > 0 && !log.isPending
   const kindLabel = KIND_META[kind]?.label ?? "interaction"
 
-  return (
-    <>
-      {/* pr-12 clears the close button, which the sheet positions absolutely in the
-          top-right. Without it a long lead name runs underneath the × on a narrow
-          screen instead of truncating above it. */}
-      <SheetHeader className="px-0 pr-12">
-        <SheetTitle className="truncate">
-          {person.data ? fullName(person.data) : <Skeleton className="h-6 w-48" />}
-        </SheetTitle>
-        <SheetDescription className="flex flex-wrap items-center gap-2">
-          {person.data?.email && (
-            <a
-              href={`mailto:${person.data.email}`}
-              className="hover:underline underline-offset-4"
-            >
-              {person.data.email}
-            </a>
-          )}
-          {person.data && <StageBadge stage={person.data.lifecycleStage} />}
-        </SheetDescription>
-      </SheetHeader>
+  if (person.isError) {
+    return (
+      <div className="grid flex-1 place-items-center p-6">
+        <Empty className="max-w-md">
+          <EmptyHeader>
+            <EmptyTitle>This lead is not here</EmptyTitle>
+            <EmptyDescription>
+              It may have been deleted, or it belongs to another workspace.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </div>
+    )
+  }
 
-      {person.data && (
-        <>
-          <div className="flex gap-1">
-            <EditLeadDialog person={person.data} />
-            <DeleteLeadDialog person={person.data} onDeleted={onClose} />
+  return (
+    // A reading column, not full bleed. The composer is a sentence to write, and a
+    // 1000px-wide textarea is a bad one; the timeline reads worse the wider it gets. The
+    // drawer was 40% wide for free, and the page has to choose it deliberately.
+    <div className="flex h-full flex-col gap-6 overflow-y-auto p-4 md:max-w-3xl md:p-6">
+      <header className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="truncate text-xl font-semibold tracking-tight">
+              {person.data ? fullName(person.data) : <Skeleton className="h-6 w-48" />}
+            </h1>
+            {person.data && (
+              <p className="text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-sm">
+                {person.data.email && (
+                  <a
+                    href={`mailto:${person.data.email}`}
+                    className="hover:underline underline-offset-4"
+                  >
+                    {person.data.email}
+                  </a>
+                )}
+                <StageBadge stage={person.data.lifecycleStage} />
+                {person.data.source && <span>via {person.data.source}</span>}
+              </p>
+            )}
           </div>
-          <CompanyField person={person.data} />
-        </>
-      )}
+
+          {person.data && (
+            <div className="flex shrink-0 gap-1">
+              <EditLeadDialog person={person.data} />
+              <DeleteLeadDialog person={person.data} />
+            </div>
+          )}
+        </div>
+
+        {person.data && <CompanyField person={person.data} />}
+      </header>
 
       <form
         className="flex flex-col gap-3"
@@ -245,7 +240,9 @@ function DrawerBody({
               {kind === "email" && (
                 <ToggleGroup
                   value={[direction]}
-                  onValueChange={(v) => v.length > 0 && setDirection(v[0] as "inbound" | "outbound")}
+                  onValueChange={(v) =>
+                    v.length > 0 && setDirection(v[0] as "inbound" | "outbound")
+                  }
                   variant="outline"
                   size="sm"
                 >
@@ -272,8 +269,8 @@ function DrawerBody({
           </Field>
         </FieldGroup>
 
-        <SheetFooter className="px-0">
-          {/* Button has no isPending. Compose Spinner + data-icon + disabled. */}
+        {/* Button has no isPending. Compose Spinner + data-icon + disabled. */}
+        <div className="flex items-center gap-3">
           <Button type="submit" disabled={!canSubmit}>
             {log.isPending && <Spinner data-icon="inline-start" />}
             {log.isPending ? "Saving…" : `Log ${kindLabel.toLowerCase()}`}
@@ -283,12 +280,17 @@ function DrawerBody({
               Could not save. Try again.
             </p>
           )}
-        </SheetFooter>
+        </div>
       </form>
 
-      {/* Full-bleed scroll with padded content, so rows can scroll edge to edge while
-          their text still lines up with everything above. */}
-      <div className="-mx-4 min-h-0 flex-1 overflow-y-auto px-4">
+      <section className="flex min-h-0 flex-col">
+        <h2 className="text-muted-foreground mb-2 text-sm font-medium">
+          Activity
+          {timeline.data?.pages[0]?.total != null && (
+            <span className="tabular-nums"> · {timeline.data.pages[0].total}</span>
+          )}
+        </h2>
+
         {timeline.isPending ? (
           <div className="flex flex-col gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -319,7 +321,7 @@ function DrawerBody({
               <Button
                 variant="ghost"
                 size="sm"
-                className="mt-2 w-full"
+                className="mt-2"
                 disabled={timeline.isFetchingNextPage}
                 onClick={() => timeline.fetchNextPage()}
               >
@@ -329,8 +331,8 @@ function DrawerBody({
             )}
           </>
         )}
-      </div>
-    </>
+      </section>
+    </div>
   )
 }
 
@@ -588,13 +590,8 @@ function EditLeadDialog({ person }: { person: Person }) {
  * only ever sets deleted_at, so nothing here is irreversible — which is why the confirm
  * says "hides" rather than "deletes".
  */
-function DeleteLeadDialog({
-  person,
-  onDeleted,
-}: {
-  person: Person
-  onDeleted: () => void
-}) {
+function DeleteLeadDialog({ person }: { person: Person }) {
+  const router = useRouter()
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
 
@@ -602,11 +599,9 @@ function DeleteLeadDialog({
     mutationFn: () => deletePerson(person.id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["people"] })
-      setOpen(false)
-      // The record this drawer is showing no longer exists. Leaving it open would keep
-      // presenting a deleted lead as though it were alive, and it would sit on top of the
-      // list the user is trying to check.
-      onDeleted()
+      // There is no record left to show, so leaving would be a page that errors on
+      // purpose. Back to the list, where the row is already gone.
+      router.push("/people")
     },
   })
 

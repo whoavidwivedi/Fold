@@ -106,13 +106,13 @@ for (const vp of VIEWPORTS) {
     await page.waitForTimeout(1200)
     await page.screenshot({ path: `${OUT}/${vp.name}-people.png` })
 
-    // Below md the list is cards, not a table, so there is no row to click. Picking
-    // whichever exists is also a check that the responsive switch is doing its job.
-    const asRow = page.getByRole("row").filter({ hasText: "Maximiliana" })
-    const asCard = page.getByRole("button").filter({ hasText: "Maximiliana" })
-    await (asRow.or(asCard).first().click())
+    // The lead is a link in both layouts — a table cell on desktop, a card on mobile.
+    await page.getByRole("link", { name: "Maximiliana" }).click()
+    await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
     await page.waitForTimeout(700)
-    await page.screenshot({ path: `${OUT}/${vp.name}-drawer.png` })
+    await page.screenshot({ path: `${OUT}/${vp.name}-record.png` })
+
+    await page.screenshot({ path: `${OUT}/${vp.name}-record.png` })
 
     await page.getByRole("button", { name: /^edit$/i }).click()
     await page.waitForTimeout(400)
