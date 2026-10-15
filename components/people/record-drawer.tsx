@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   RiArrowRightLine,
+  RiEditLine,
   RiChat1Line,
   RiMailLine,
   RiPhoneLine,
@@ -12,10 +13,24 @@ import {
 
 import { listTimeline, logActivity } from "@/lib/api/generated/endpoints/activity/activity"
 import { listCompanies } from "@/lib/api/generated/endpoints/companies/companies"
-import { getPerson, updatePerson } from "@/lib/api/generated/endpoints/people/people"
+import {
+  deletePerson,
+  getPerson,
+  updatePerson,
+} from "@/lib/api/generated/endpoints/people/people"
 import type { Entry, LogBody, Person } from "@/lib/api/generated/model"
 
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import {
   Empty,
   EmptyDescription,
@@ -44,12 +59,14 @@ import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { StageBadge } from "@/components/people/fields"
+import {
+  NO_COMPANY,
+  PersonFormFields,
+  type PersonDraft,
+} from "@/components/people/person-form"
 
 const PAGE_SIZE = 50
 
-// Sentinel for "no company". It cannot be the empty string: Base UI treats "" as an
-// unset value, so selecting it would not fire onValueChange at all.
-const NONE = "__none__"
 
 type Kind = NonNullable<LogBody["kind"]>
 
@@ -86,14 +103,20 @@ export function RecordDrawer({
           // iOS curve, which is what --ease-drawer is for.
           className="w-full ease-drawer sm:max-w-lg"
         >
-          <DrawerBody personId={personId} />
+          <DrawerBody personId={personId} onClose={onClose} />
         </SheetContent>
       )}
     </Sheet>
   )
 }
 
-function DrawerBody({ personId }: { personId: string }) {
+function DrawerBody({
+  personId,
+  onClose,
+}: {
+  personId: string
+  onClose: () => void
+}) {
   const queryClient = useQueryClient()
 
   const person = useQuery({
@@ -164,7 +187,13 @@ function DrawerBody({ personId }: { personId: string }) {
       </SheetHeader>
 
       {person.data && (
-        <CompanyField person={person.data} />
+        <>
+          <div className="-mx-1 flex gap-1">
+            <EditLeadDialog person={person.data} />
+            <DeleteLeadDialog person={person.data} onDeleted={onClose} />
+          </div>
+          <CompanyField person={person.data} />
+        </>
       )}
 
       <form
@@ -392,7 +421,7 @@ function CompanyField({ person }: { person: Person }) {
     },
   })
 
-  const current = person.companyId ?? ""
+  const current = person.companyId ?? NO_COMPANY
 
   // Base UI renders SelectValue from the `items` collection, not from the mounted
   // <SelectItem> children. Without this the trigger shows the raw uuid: technically
@@ -400,7 +429,7 @@ function CompanyField({ person }: { person: Person }) {
   // cannot be read is the same bug as a dangling foreign key with extra steps.
   const options = useMemo(
     () => [
-      { value: NONE, label: "No company" },
+      { value: NO_COMPANY, label: "No company" },
       ...(companies.data?.items ?? []).map((c) => ({ value: c.id, label: c.name })),
     ],
     [companies.data],
@@ -412,7 +441,7 @@ function CompanyField({ person }: { person: Person }) {
       <Select
         items={options}
         value={current}
-        onValueChange={(v) => save.mutate(v && v !== NONE ? v : undefined)}
+        onValueChange={(v) => save.mutate(v ?? NO_COMPANY)}
       >
         <SelectTrigger id={`company-${person.id}`} size="sm" className="w-full">
           <SelectValue placeholder="No company" />
@@ -431,5 +460,201 @@ function CompanyField({ person }: { person: Person }) {
         </p>
       )}
     </Field>
+  )
+}
+
+/** Turn a loaded Person into the form's draft shape. */
+function toDraft(person: Person): PersonDraft {
+  return {
+    firstName: person.firstName,
+    lastName: person.lastName,
+    email: person.email ?? "",
+    phone: person.phone ?? "",
+    jobTitle: person.jobTitle ?? "",
+    lifecycleStage: person.lifecycleStage as PersonDraft["lifecycleStage"],
+    companyId: person.companyId ?? "",
+  }
+}
+
+/**
+ * Edit every field on the lead.
+ *
+ * The API could do this since the first commit. Without this dialog the only editable
+ * thing in the product was the company, and the only way to move a lead through the
+ * pipeline — the one action that writes a stage_change to the timeline — was a PATCH by
+ * hand.
+ */
+function EditLeadDialog({ person }: { person: Person }) {
+  const queryClient = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState<PersonDraft>(() => toDraft(person))
+
+  // Re-seed when the record changes underneath, so reopening after a realtime update
+  // shows current values rather than the ones from when the dialog last opened.
+  const [seededFor, setSeededFor] = useState(person.updatedAt)
+  if (person.updatedAt !== seededFor) {
+    setSeededFor(person.updatedAt)
+    setDraft(toDraft(person))
+  }
+
+  const save = useMutation({
+    mutationFn: () =>
+      updatePerson(person.id, {
+        firstName: draft.firstName.trim(),
+        lastName: draft.lastName.trim(),
+        lifecycleStage: draft.lifecycleStage,
+        // undefined leaves a field alone; "" clears it. The SQL's NULLIF turns that
+        // empty string into a real NULL, so clearing removes the value instead of
+        // storing a blank one.
+        email: draft.email.trim(),
+        phone: draft.phone.trim(),
+        jobTitle: draft.jobTitle.trim(),
+        companyId: draft.companyId || NO_COMPANY,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["person", person.id] })
+      await queryClient.invalidateQueries({ queryKey: ["people"] })
+      setOpen(false)
+    },
+  })
+
+  const canSubmit =
+    (draft.firstName.trim() !== "" || draft.lastName.trim() !== "") && !save.isPending
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (next) setDraft(toDraft(person))
+      }}
+    >
+      <DialogTrigger
+        render={
+          <Button variant="outline" size="sm">
+            <RiEditLine aria-hidden data-icon="inline-start" />
+            Edit
+          </Button>
+        }
+      />
+
+      <DialogContent>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (canSubmit) save.mutate()
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Edit lead</DialogTitle>
+            <DialogDescription>
+              Changing the stage records it on this lead&apos;s timeline.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="my-4">
+            <PersonFormFields
+              draft={draft}
+              onChange={setDraft}
+              idPrefix={`edit-${person.id}`}
+            />
+          </div>
+
+          <DialogFooter>
+            {save.isError && (
+              <p role="alert" className="text-destructive mr-auto text-sm">
+                Could not save. Try again.
+              </p>
+            )}
+            <DialogClose
+              render={
+                <Button variant="outline" type="button">
+                  Cancel
+                </Button>
+              }
+            />
+            <Button type="submit" disabled={!canSubmit}>
+              {save.isPending && <Spinner data-icon="inline-start" />}
+              {save.isPending ? "Saving…" : "Save changes"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+/**
+ * Soft-delete a lead.
+ *
+ * Soft, not hard: sales data gets deleted by accident and this is recoverable. The API
+ * only ever sets deleted_at, so nothing here is irreversible — which is why the confirm
+ * says "hides" rather than "deletes".
+ */
+function DeleteLeadDialog({
+  person,
+  onDeleted,
+}: {
+  person: Person
+  onDeleted: () => void
+}) {
+  const queryClient = useQueryClient()
+  const [open, setOpen] = useState(false)
+
+  const remove = useMutation({
+    mutationFn: () => deletePerson(person.id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["people"] })
+      setOpen(false)
+      // The record this drawer is showing no longer exists. Leaving it open would keep
+      // presenting a deleted lead as though it were alive, and it would sit on top of the
+      // list the user is trying to check.
+      onDeleted()
+    },
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger
+        render={
+          <Button variant="ghost" size="sm" className="text-destructive">
+            Delete
+          </Button>
+        }
+      />
+
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete {fullName(person)}?</DialogTitle>
+          <DialogDescription>
+            This hides the lead and its activity from the workspace. Nothing is destroyed,
+            and their history is still there if it is restored.
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter className="mt-4">
+          {remove.isError && (
+            <p role="alert" className="text-destructive mr-auto text-sm">
+              Could not delete. Try again.
+            </p>
+          )}
+          <DialogClose
+            render={
+              <Button variant="outline" type="button">
+                Cancel
+              </Button>
+            }
+          />
+          <Button
+            variant="destructive"
+            disabled={remove.isPending}
+            onClick={() => remove.mutate()}
+          >
+            {remove.isPending && <Spinner data-icon="inline-start" />}
+            {remove.isPending ? "Deleting…" : "Delete lead"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

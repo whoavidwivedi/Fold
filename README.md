@@ -136,6 +136,7 @@ The short version:
 Working today:
 
 - Multi-tenant workspaces, invitations and roles
+- Lead CRUD end to end — create, edit, and soft-delete from the browser
 - Person records with runtime-defined custom fields (JSONB — adding a field is a row
   insert, never a migration)
 - Companies, linked to and detached from leads without orphaning either side

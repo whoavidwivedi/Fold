@@ -117,6 +117,13 @@ The highest-value section. These have all cost real time.
   `[75]` only.
 - Reusing an existing util is a hard requirement. **Reimplementing an existing helper is
   the most common defect in AI-authored changes here.** Grep before you write.
+- **A PATCH cannot clear a field with `COALESCE(narg(col), col)`** — NULL means "leave
+  alone", so NULLIF is needed to make `""` store a real NULL. A uuid column has no empty
+  string at all, so clearing one needs a sentinel (person uses the zero uuid; see
+  `NO_COMPANY`).
+- **`format:"email"` rejects `""` with a 422 before the handler runs.** Huma validates
+  whatever is present, and an empty string is present. Any field that must be clearable
+  cannot carry a format tag — validate in the handler instead, skipping the empty string.
 - **Base UI's `Select` renders `SelectValue` from the `items` collection, not from the
   mounted `<SelectItem>` children.** Omit `items` and the trigger shows the raw value — a
   uuid in our case. It passes every API check and is unusable. Same family of bug as a

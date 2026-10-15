@@ -1,7 +1,5 @@
 "use client"
 
-import { useMemo } from "react"
-
 import { cn } from "cn"
 import { Badge } from "@/components/ui/badge"
 
@@ -139,15 +137,18 @@ export function StageBadge({ stage }: { stage: string }) {
   )
 }
 
-export function useStageOptions() {
-  return useMemo(
-    () => [
-      { value: "new", label: "New" },
-      { value: "contacted", label: "Contacted" },
-      { value: "qualified", label: "Qualified" },
-      { value: "customer", label: "Customer" },
-      { value: "disqualified", label: "Disqualified" },
-    ],
-    [],
-  )
-}
+/**
+ * The qualification stages, in the order a lead moves through them.
+ *
+ * Exported because three things now need it and they must agree: the filter chips on the
+ * list, the stage badge tone map above, and the picker in the lead form. It replaced a
+ * useStageOptions() hook that wrapped this constant in useMemo and was called from
+ * nowhere.
+ */
+export const STAGES = [
+  { value: "new", label: "New" },
+  { value: "contacted", label: "Contacted" },
+  { value: "qualified", label: "Qualified" },
+  { value: "customer", label: "Customer" },
+  { value: "disqualified", label: "Disqualified" },
+]

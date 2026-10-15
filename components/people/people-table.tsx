@@ -9,14 +9,32 @@ import {
 } from "@tanstack/react-table"
 import { useVirtualizer } from "@tanstack/react-virtual"
 
-import { listPersons } from "@/lib/api/generated/endpoints/people/people"
+import { createPerson, listPersons } from "@/lib/api/generated/endpoints/people/people"
 import type { Person } from "@/lib/api/generated/model"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+
+import { RiAddLine } from "@remixicon/react"
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Spinner } from "@/components/ui/spinner"
+import {
+  EMPTY_DRAFT,
+  PersonFormFields,
+  type PersonDraft,
+} from "@/components/people/person-form"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -26,7 +44,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { StageBadge } from "@/components/people/fields"
+import { STAGES, StageBadge } from "@/components/people/fields"
 import { RecordDrawer } from "@/components/people/record-drawer"
 
 const PAGE_SIZE = 50
@@ -50,6 +68,10 @@ export function PeopleTable() {
   // linked record view is worth doing properly, with its own route, rather than
   // bolting a search param onto a modal.
   const [openId, setOpenId] = useState<string | null>(null)
+
+  // Keyed on the prefix, not the id: the table creates leads and the drawer edits them,
+  // and both invalidate this list.
+  const queryClient = useQueryClient()
 
   // The cursor stack makes Back work. Keyset pagination has no page number, so
   // remembering the cursor that produced each page is the only way to go backwards.
@@ -78,6 +100,24 @@ export function PeopleTable() {
   })
 
   const people = useMemo(() => query.data?.items ?? [], [query.data])
+
+  const create = useMutation({
+    mutationFn: (draft: PersonDraft) =>
+      createPerson({
+        firstName: draft.firstName.trim(),
+        lastName: draft.lastName.trim(),
+        lifecycleStage: draft.lifecycleStage,
+        // "" means "not set" in a form and NULL in the API. Sending "" would store a
+        // blank email that renders as an empty link.
+        ...(draft.email.trim() ? { email: draft.email.trim() } : {}),
+        ...(draft.phone.trim() ? { phone: draft.phone.trim() } : {}),
+        ...(draft.jobTitle.trim() ? { jobTitle: draft.jobTitle.trim() } : {}),
+        ...(draft.companyId ? { companyId: draft.companyId } : {}),
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["people"] })
+    },
+  })
 
   const columns = useMemo<ColumnDef<Person>[]>(
     () => [
@@ -207,6 +247,14 @@ export function PeopleTable() {
         />
 
         <StageFilter value={stage} onChange={(next) => { setStage(next); resetPaging() }} />
+
+        <div className="ml-auto">
+          <NewLeadDialog
+            pending={create.isPending}
+            error={create.isError}
+            onCreate={(draft) => create.mutate(draft)}
+          />
+        </div>
       </div>
 
       {query.isPending ? (
@@ -354,14 +402,8 @@ export function PeopleTable() {
   )
 }
 
-const STAGES = [
-  { value: "", label: "All stages" },
-  { value: "new", label: "New" },
-  { value: "contacted", label: "Contacted" },
-  { value: "qualified", label: "Qualified" },
-  { value: "customer", label: "Customer" },
-  { value: "disqualified", label: "Disqualified" },
-]
+// The filter adds an "All stages" chip to the shared list rather than duplicating it.
+const STAGE_FILTER = [{ value: "", label: "All stages" }, ...STAGES]
 
 function StageFilter({
   value,
@@ -372,7 +414,7 @@ function StageFilter({
 }) {
   return (
     <div role="group" aria-label="Filter by stage" className="flex flex-wrap gap-1">
-      {STAGES.map((option) => {
+      {STAGE_FILTER.map((option) => {
         const active = value === option.value
         return (
           <Button
@@ -388,5 +430,89 @@ function StageFilter({
         )
       })}
     </div>
+  )
+}
+/**
+ * Create a lead.
+ *
+ * Mounted next to the search box rather than in the drawer: a new lead has nothing to
+ * draw yet, so a drawer would be an empty frame with a form in it. The API has supported
+ * this since the first commit — until now there was no way to reach it from a browser,
+ * which made every lead in the product something only a test could create.
+ */
+function NewLeadDialog({
+  pending,
+  error,
+  onCreate,
+}: {
+  pending: boolean
+  error: boolean
+  onCreate: (draft: PersonDraft) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState<PersonDraft>(EMPTY_DRAFT)
+
+  // A lead needs to be findable later, and a name is the minimum that makes it so.
+  const canSubmit =
+    (draft.firstName.trim() !== "" || draft.lastName.trim() !== "") && !pending
+
+  function close() {
+    setOpen(false)
+    setDraft(EMPTY_DRAFT)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
+      {/* Base UI takes a custom trigger through render={...}. asChild is Radix. */}
+      <DialogTrigger
+        render={
+          <Button>
+            <RiAddLine aria-hidden data-icon="inline-start" />
+            New lead
+          </Button>
+        }
+      />
+
+      <DialogContent>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!canSubmit) return
+            onCreate(draft)
+            close()
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>New lead</DialogTitle>
+            <DialogDescription>
+              A name is enough to start. You can fill in the rest from their record.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="my-4">
+            <PersonFormFields draft={draft} onChange={setDraft} idPrefix="new-lead" />
+          </div>
+
+          <DialogFooter>
+            {error && (
+              <p role="alert" className="text-destructive mr-auto text-sm">
+                Could not save. Try again.
+              </p>
+            )}
+            <DialogClose
+              render={
+                <Button variant="outline" type="button">
+                  Cancel
+                </Button>
+              }
+            />
+            <Button type="submit" disabled={!canSubmit}>
+              {pending && <Spinner data-icon="inline-start" />}
+              {pending ? "Saving…" : "Create lead"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }

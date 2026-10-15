@@ -327,11 +327,13 @@ const updateCompany = `-- name: UpdateCompany :one
 UPDATE company
 SET
     name         = $1,
-    domain       = COALESCE($2, domain),
-    industry     = COALESCE($3, industry),
-    size         = COALESCE($4, size),
-    location     = COALESCE($5, location),
-    linkedin_url = COALESCE($6, linkedin_url),
+    -- NULLIF so an empty string clears the column instead of storing "". See the note on
+    -- UpdatePerson: COALESCE alone makes a field impossible to clear.
+    domain       = NULLIF(COALESCE($2, domain), ''),
+    industry     = NULLIF(COALESCE($3, industry), ''),
+    size         = NULLIF(COALESCE($4, size), ''),
+    location     = NULLIF(COALESCE($5, location), ''),
+    linkedin_url = NULLIF(COALESCE($6, linkedin_url), ''),
     data         = company.data || $7::jsonb,
     updated_at   = now()
 WHERE workspace_id = $8

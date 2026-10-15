@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/mail"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -182,9 +183,14 @@ type UpdateInput struct {
 }
 
 type UpdateBody struct {
-	FirstName      *string         `json:"firstName,omitempty" maxLength:"120"`
-	LastName       *string         `json:"lastName,omitempty" maxLength:"120"`
-	Email          *string         `json:"email,omitempty" format:"email"`
+	FirstName *string `json:"firstName,omitempty" maxLength:"120"`
+	LastName  *string `json:"lastName,omitempty" maxLength:"120"`
+	// No `format:"email"` here, unlike CreateBody. Huma validates whatever is present,
+	// and an empty string is present — so a client clearing a field got a 422 before this
+	// handler ever ran, which made email the one field on the record that could be set
+	// but never removed. The check moved to the handler, which skips the empty string and
+	// rejects everything else that is not RFC 5322.
+	Email          *string         `json:"email,omitempty"`
 	Phone          *string         `json:"phone,omitempty"`
 	JobTitle       *string         `json:"jobTitle,omitempty"`
 	LifecycleStage *string         `json:"lifecycleStage,omitempty" enum:"new,contacted,qualified,customer,disqualified"`
@@ -396,6 +402,14 @@ func Register(api huma.API, db *platform.DB, mw func(huma.Context, func(huma.Con
 		p, workspaceID, err := principal(ctx)
 		if err != nil {
 			return nil, err
+		}
+
+		// The email check lives here rather than on the struct tag — see UpdateBody.
+		// Empty means "clear it", which is a legitimate PATCH; anything else must parse.
+		if in.Body.Email != nil && *in.Body.Email != "" {
+			if _, err := mail.ParseAddress(*in.Body.Email); err != nil {
+				return nil, huma.Error422UnprocessableEntity("email is not a valid address")
+			}
 		}
 
 		var updated dbstore.UpdatePersonRow
