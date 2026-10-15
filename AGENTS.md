@@ -132,6 +132,13 @@ The highest-value section. These have all cost real time.
   resolves after the clear and writes the *old* token straight back into the cache. `token.ts`
   keeps a generation counter for this. Symptom: switching workspaces twice quickly keeps
   the first workspace, silently, with valid-looking data.
+- **A create body and an update body are not the same function, even when they look
+  identical.** Dropping blank fields is right on create and wrong on update, where a
+  blank means "clear this" and an omitted key means "leave it alone". One shared helper
+  silently makes a form unable to empty a single field.
+- **A per-row `aria-label` that repeats the row's own content changes that row's
+  accessible name.** `aria-label="Delete Acme"` made the contacts cell read
+  "0 Delete Acme" and broke every selector scoped to it. Label the action, not the record.
 - **Base UI's `DropdownMenuLabel` throws without an enclosing `DropdownMenuGroup`.**
 - **Base UI's `Select` renders `SelectValue` from the `items` collection, not from the
   mounted `<SelectItem>` children.** Omit `items` and the trigger shows the raw value — a

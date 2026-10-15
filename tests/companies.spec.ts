@@ -203,3 +203,106 @@ async function currentPersonId(page: Page): Promise<string> {
   ).json()
   return list.items[0].id as string
 }
+
+test.describe("company form invariants", () => {
+  // These are the three bugs that shipped once already, pinned on the second form. A
+  // regression here is invisible to every other assertion: the API answers 200, the row
+  // updates, and the result is still wrong.
+
+  test("editing a company saves and persists", async ({ page }) => {
+    const id = await signUp(page)
+    await seedCompany(page, "Northside Roofing", "northside.test")
+
+    await page.getByRole("link", { name: "Companies" }).click()
+    await page.waitForURL("**/companies")
+    await page.getByRole("cell", { name: "Northside Roofing", exact: true }).click()
+
+    const dialog = page.getByRole("dialog")
+    await dialog.getByLabel("Name").fill("Northside Roofing Co")
+    await dialog.getByLabel("Industry").fill("Contracting")
+    await dialog.getByRole("button", { name: /save changes/i }).click()
+
+    await expect(
+      page.getByRole("cell", { name: "Northside Roofing Co", exact: true }),
+    ).toBeVisible()
+    await expect(page.getByRole("cell", { name: "Contracting", exact: true })).toBeVisible()
+    void id
+  })
+
+  test("clearing a field removes it rather than leaving it blank", async ({ page }) => {
+    const id = await signUp(page)
+    const companyId = await seedCompany(page, "Target Co", "target.test", "Roofing")
+
+    await page.getByRole("link", { name: "Companies" }).click()
+    await page.waitForURL("**/companies")
+    await page.getByRole("cell", { name: "Target Co", exact: true }).click()
+
+    const dialog = page.getByRole("dialog")
+    await expect(dialog.getByLabel("Domain")).toHaveValue("target.test")
+    await dialog.getByLabel("Domain").fill("")
+    await dialog.getByLabel("Industry").fill("")
+    await dialog.getByRole("button", { name: /save changes/i }).click()
+
+    await page.waitForTimeout(800)
+    const company = await (
+      await page.request.get(`${API}/v1/companies/${companyId}`, {
+        headers: await authHeaders(page),
+      })
+    ).json()
+
+    // NULL, not "". This is the assertion the whole thing rests on: an empty string
+    // renders as a blank link and never matches a search.
+    expect(company.company.domain ?? null).toBeNull()
+    expect(company.company.industry ?? null).toBeNull()
+    // And an untouched field survived the clear.
+    expect(company.company.name).toBe("Target Co")
+    void id
+  })
+
+  test("deleting a company warns about its contacts and leaves them", async ({ page }) => {
+    const id = await signUp(page)
+    const companyId = await seedCompany(page, "Doomed Ltd")
+    await page.request.post(`${API}/v1/persons`, {
+      headers: await authHeaders(page),
+      data: { firstName: "Ana", lastName: "Linked", companyId },
+    })
+    await page.waitForTimeout(600)
+
+    await page.getByRole("link", { name: "Companies" }).click()
+    await page.waitForURL("**/companies")
+    await page.getByRole("cell", { name: "Doomed Ltd", exact: true }).click()
+
+    const dialog = page.getByRole("dialog")
+    await dialog.getByRole("button", { name: /^delete$/i }).click()
+
+    // The confirm names the cost, because deleting a company unlinks its leads.
+    await expect(page.getByText(/1 lead is linked/)).toBeVisible()
+    await dialog.getByRole("button", { name: /delete company/i }).click()
+
+    // The dialog must close, or it sits on top of the list the user is checking.
+    await expect(page.getByRole("dialog")).toHaveCount(0)
+    await expect(page.getByRole("cell", { name: "Doomed Ltd", exact: true })).toHaveCount(0)
+
+    const list = await (
+      await page.request.get(`${API}/v1/persons`, { headers: await authHeaders(page) })
+    ).json()
+    expect(list.items[0].firstName).toBe("Ana")
+    expect(list.items[0].companyId ?? null).toBeNull()
+    void id
+  })
+})
+
+async function seedCompany(
+  page: Page,
+  name: string,
+  domain?: string,
+  industry?: string,
+): Promise<string> {
+  const res = await page.request.post(`${API}/v1/companies`, {
+    headers: await authHeaders(page),
+    data: { name, ...(domain ? { domain } : {}), ...(industry ? { industry } : {}) },
+  })
+  expect(res.ok(), `seeding ${name}: ${res.status()}`).toBeTruthy()
+  await page.waitForTimeout(600)
+  return ((await res.json()) as { company: { id: string } }).company.id
+}

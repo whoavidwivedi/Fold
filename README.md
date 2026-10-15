@@ -140,7 +140,8 @@ Working today:
 - Lead CRUD end to end — create, edit, and soft-delete from the browser
 - Person records with runtime-defined custom fields (JSONB — adding a field is a row
   insert, never a migration)
-- Companies, linked to and detached from leads without orphaning either side
+- Companies with full create, edit and delete, linked to and detached from leads
+  without orphaning either side
 - Full-text search across name, email local part and email domain
 - Keyset pagination, debounced search, stage filters
 - Activity log and timeline: notes, calls, emails and stage changes

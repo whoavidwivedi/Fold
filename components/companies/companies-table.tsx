@@ -2,12 +2,22 @@
 
 import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { RiAddLine } from "@remixicon/react"
+import { RiAddLine, RiDeleteBin6Line } from "@remixicon/react"
 
-import { createCompany, listCompanies } from "@/lib/api/generated/endpoints/companies/companies"
+import {
+  createCompany,
+  deleteCompany,
+  listCompanies,
+  updateCompany,
+} from "@/lib/api/generated/endpoints/companies/companies"
+import type { Company } from "@/lib/api/generated/model"
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
-import { cn } from "cn"
+import {
+  EMPTY_COMPANY,
+  CompanyFormFields,
+  type CompanyDraft,
+} from "@/components/companies/company-form"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -19,7 +29,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
@@ -71,12 +80,30 @@ export function CompaniesTable() {
   const companies = useMemo(() => query.data?.items ?? [], [query.data])
 
   const create = useMutation({
-    mutationFn: (body: { name: string; domain?: string; industry?: string }) =>
-      createCompany(body),
+    mutationFn: (draft: CompanyDraft) =>
+      createCompany(newCompanyBody(draft)),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["companies"] })
     },
   })
+
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteCompany(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["companies"] })
+      // The lead list shows the contacts count from a company row, so it moves too.
+      await queryClient.invalidateQueries({ queryKey: ["people"] })
+    },
+  })
+
+  const [editing, setEditing] = useState<Company | null>(null)
+
+  // Cancel, save and delete all close the dialog the same way. Leaving it open after a
+  // delete is the bug the lead drawer had: a modal sitting on top of the list you are
+  // trying to check.
+  function onEditClosed() {
+    setEditing(null)
+  }
 
   return (
     <div className="flex h-full flex-col gap-4 p-4 md:p-6">
@@ -100,7 +127,7 @@ export function CompaniesTable() {
         <NewCompanyDialog
           pending={create.isPending}
           error={create.isError}
-          onCreate={(body) => create.mutate(body)}
+          onCreate={(draft) => create.mutate(draft)}
         />
       </div>
 
@@ -146,13 +173,21 @@ export function CompaniesTable() {
                 {companies.map((company) => (
                   <TableRow
                     key={company.id}
-                    className="grid transition-colors hover:bg-muted/50"
+                    onClick={() => setEditing(company)}
+                    className="grid cursor-pointer transition-colors hover:bg-muted/50"
                     style={{ gridTemplateColumns: COLUMN_WIDTHS }}
                   >
                     <TableCell className="flex items-center overflow-hidden">
-                      <span className="block truncate font-medium">
+                      {/* A <tr> is not a control. role="button" here would erase the row
+                          from screen-reader table navigation, so the name is the button
+                          and the row handler is the pointer shortcut beside it. */}
+                      <button
+                        type="button"
+                        onClick={() => setEditing(company)}
+                        className="-my-1 block max-w-full truncate px-1 text-left font-medium hover:underline underline-offset-4 focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+                      >
                         {company.name}
-                      </span>
+                      </button>
                     </TableCell>
                     <TableCell className="flex items-center overflow-hidden">
                       <span className="text-muted-foreground block truncate text-sm">
@@ -164,11 +199,22 @@ export function CompaniesTable() {
                         {company.industry ?? "—"}
                       </span>
                     </TableCell>
-                    <TableCell className="flex items-center justify-end">
+                    <TableCell className="flex items-center justify-end gap-1">
                       {/* Absent on single-record responses; 0 is a real answer here. */}
                       <span className="tabular-nums text-sm">
                         {company.peopleCount ?? 0}
                       </span>
+                      <button
+                        type="button"
+                        aria-label="Delete"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditing(company)
+                        }}
+                        className="text-muted-foreground hover:text-destructive rounded-sm p-1 transition-colors"
+                      >
+                        <RiDeleteBin6Line className="size-4" aria-hidden />
+                      </button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -177,8 +223,61 @@ export function CompaniesTable() {
           </div>
         </div>
       )}
+
+      {editing && (
+        <EditCompanyDialog
+          key={editing.id}
+          company={editing}
+          pending={remove.isPending}
+          onSave={(draft) =>
+            updateCompany(editing.id, companyUpdateBody(draft)).then(async () => {
+              await queryClient.invalidateQueries({ queryKey: ["companies"] })
+              await queryClient.invalidateQueries({ queryKey: ["people"] })
+            })
+          }
+          onDelete={() => {
+            remove.mutate(editing.id, { onSuccess: onEditClosed })
+          }}
+          onClose={onEditClosed}
+        />
+      )}
     </div>
   )
+}
+
+/**
+ * Body for a create: blanks are dropped, so the column is never written at all.
+ *
+ * Deliberately NOT shared with the update path, despite looking identical. Sharing them
+ * is exactly the drift these tests exist to catch, and it was caught: a body that drops
+ * blanks is right on create and wrong on update, where a blank means "clear this" and
+ * omitting it means "leave it alone". One combined helper silently made the company form
+ * unable to empty a single field.
+ */
+function newCompanyBody(draft: CompanyDraft) {
+  return {
+    name: draft.name.trim(),
+    ...(draft.domain.trim() ? { domain: draft.domain.trim() } : {}),
+    ...(draft.industry.trim() ? { industry: draft.industry.trim() } : {}),
+    ...(draft.size.trim() ? { size: draft.size.trim() } : {}),
+    ...(draft.location.trim() ? { location: draft.location.trim() } : {}),
+  }
+}
+
+/**
+ * Body for an update: every field is sent, blanks included.
+ *
+ * A blank becomes "" and the SQL's NULLIF turns that into a real NULL, which is the only
+ * way a PATCH can remove a value. Omitting the key would leave the existing one alone.
+ */
+function companyUpdateBody(draft: CompanyDraft) {
+  return {
+    name: draft.name.trim(),
+    domain: draft.domain.trim(),
+    industry: draft.industry.trim(),
+    size: draft.size.trim(),
+    location: draft.location.trim(),
+  }
 }
 
 function NewCompanyDialog({
@@ -188,45 +287,21 @@ function NewCompanyDialog({
 }: {
   pending: boolean
   error: boolean
-  onCreate: (body: { name: string; domain?: string; industry?: string }) => void
+  onCreate: (draft: CompanyDraft) => void
 }) {
   const [open, setOpen] = useState(false)
-  const [name, setName] = useState("")
-  const [domain, setDomain] = useState("")
-  const [industry, setIndustry] = useState("")
+  const [draft, setDraft] = useState<CompanyDraft>(EMPTY_COMPANY)
 
-  const canSubmit = name.trim().length > 0 && !pending
+  const canSubmit = draft.name.trim().length > 0 && !pending
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!canSubmit) return
-    onCreate({
-      name: name.trim(),
-      // Empty strings become "absent" rather than an empty column. The API treats null
-      // as "leave alone" on update and "" as a value on create, so sending "" here would
-      // store a blank domain instead of none.
-      ...(domain.trim() ? { domain: domain.trim() } : {}),
-      ...(industry.trim() ? { industry: industry.trim() } : {}),
-    })
-    setName("")
-    setDomain("")
-    setIndustry("")
+  function close() {
     setOpen(false)
+    setDraft(EMPTY_COMPANY)
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next)
-        if (!next) {
-          setName("")
-          setDomain("")
-          setIndustry("")
-        }
-      }}
-    >
-      {/* Base UI: render={...} for a custom trigger. asChild is Radix and does nothing. */}
+    <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
+      {/* Base UI takes a custom trigger through render={...}. asChild is Radix. */}
       <DialogTrigger
         render={
           <Button>
@@ -237,7 +312,14 @@ function NewCompanyDialog({
       />
 
       <DialogContent>
-        <form onSubmit={submit}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!canSubmit) return
+            onCreate(draft)
+            close()
+          }}
+        >
           <DialogHeader>
             <DialogTitle>New company</DialogTitle>
             <DialogDescription>
@@ -245,36 +327,9 @@ function NewCompanyDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="my-4">
-            <Field>
-              <FieldLabel htmlFor="company-name">Name</FieldLabel>
-              <Input
-                id="company-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Northside Roofing"
-                autoFocus
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="company-domain">Domain</FieldLabel>
-              <Input
-                id="company-domain"
-                value={domain}
-                onChange={(e) => setDomain(e.target.value)}
-                placeholder="northside.test"
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="company-industry">Industry</FieldLabel>
-              <Input
-                id="company-industry"
-                value={industry}
-                onChange={(e) => setIndustry(e.target.value)}
-                placeholder="Roofing"
-              />
-            </Field>
-          </FieldGroup>
+          <div className="my-4">
+            <CompanyFormFields draft={draft} onChange={setDraft} idPrefix="new-company" />
+          </div>
 
           <DialogFooter>
             {error && (
@@ -285,7 +340,7 @@ function NewCompanyDialog({
             <DialogClose
               render={
                 <Button variant="outline" type="button">
-                  <span className={cn(pending && "opacity-0")}>Cancel</span>
+                  Cancel
                 </Button>
               }
             />
@@ -295,6 +350,135 @@ function NewCompanyDialog({
             </Button>
           </DialogFooter>
         </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+/**
+ * Edit or delete one company.
+ *
+ * Both existed as API calls with no button, the same gap the lead form had. The clearing
+ * rules are the ones the Go test in internal/dbstore pins: a blank field is sent as ""
+ * and the SQL's NULLIF turns that into a real NULL, so emptying a domain removes it
+ * rather than storing an empty string that renders as a blank link.
+ */
+function EditCompanyDialog({
+  company,
+  pending,
+  onSave,
+  onDelete,
+  onClose,
+}: {
+  company: Company
+  pending: boolean
+  onSave: (draft: CompanyDraft) => Promise<unknown>
+  onDelete: () => void
+  onClose: () => void
+}) {
+  const [draft, setDraft] = useState<CompanyDraft>({
+    name: company.name,
+    domain: company.domain ?? "",
+    industry: company.industry ?? "",
+    size: company.size ?? "",
+    location: company.location ?? "",
+  })
+  const [saving, setSaving] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [error, setError] = useState(false)
+
+  const canSubmit = draft.name.trim().length > 0 && !saving
+  const contacts = company.peopleCount
+
+  return (
+    <Dialog open onOpenChange={(next) => !next && onClose()}>
+      <DialogContent>
+        {confirmingDelete ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Delete {company.name}?</DialogTitle>
+              <DialogDescription>
+                {contacts
+                  ? `${contacts} ${contacts === 1 ? "lead is" : "leads are"} linked to this company and will be kept — they simply stop belonging to it. Nothing is destroyed.`
+                  : "This hides the company from the workspace. Nothing is destroyed."}
+              </DialogDescription>
+            </DialogHeader>
+
+            <DialogFooter className="mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setConfirmingDelete(false)}
+                disabled={pending}
+              >
+                Cancel
+              </Button>
+              <Button variant="destructive" disabled={pending} onClick={onDelete}>
+                {pending && <Spinner data-icon="inline-start" />}
+                {pending ? "Deleting…" : "Delete company"}
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!canSubmit) return
+              setSaving(true)
+              setError(false)
+              try {
+                await onSave(draft)
+                onClose()
+              } catch {
+                setError(true)
+              } finally {
+                setSaving(false)
+              }
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>Edit {company.name}</DialogTitle>
+              <DialogDescription>
+                Clearing a field removes it rather than leaving it blank.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="my-4">
+              <CompanyFormFields
+                draft={draft}
+                onChange={setDraft}
+                idPrefix={`edit-${company.id}`}
+              />
+            </div>
+
+            <DialogFooter>
+              {error && (
+                <p role="alert" className="text-destructive mr-auto text-sm">
+                  Could not save. Try again.
+                </p>
+              )}
+              <Button
+                variant="ghost"
+                type="button"
+                className="text-destructive mr-auto"
+                onClick={() => setConfirmingDelete(true)}
+              >
+                <RiDeleteBin6Line aria-hidden data-icon="inline-start" />
+                Delete
+              </Button>
+              <DialogClose
+                render={
+                  <Button variant="outline" type="button">
+                    Cancel
+                  </Button>
+                }
+              />
+              <Button type="submit" disabled={!canSubmit}>
+                {saving && <Spinner data-icon="inline-start" />}
+                {saving ? "Saving…" : "Save changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   )
