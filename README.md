@@ -138,6 +138,8 @@ Working today:
 - Multi-tenant workspaces, invitations, roles, and switching between them — the JWT,
   every cached query and the live stream all move together
 - Lead CRUD end to end — create, edit, and soft-delete from the browser
+- Leads at `/people/[id]`: linkable, back-button aware, and a page you stay on rather than a
+  sheet you dismiss
 - Person records with runtime-defined custom fields (JSONB — adding a field is a row
   insert, never a migration)
 - Companies with full create, edit and delete, linked to and detached from leads

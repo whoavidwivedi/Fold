@@ -84,7 +84,8 @@ test.describe("lead CRUD", () => {
     const id = await signUp(page)
     await seedLead(page, id.stamp)
 
-    await leadRow(page, "Ines Drawer").click()
+    await page.getByRole("link", { name: "Ines Drawer" }).click()
+    await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
     await page.getByRole("button", { name: /^edit$/i }).click()
 
     const dialog = page.getByRole("dialog")
@@ -108,7 +109,8 @@ test.describe("lead CRUD", () => {
     const id = await signUp(page)
     await seedLead(page, id.stamp)
 
-    await leadRow(page, "Ines Drawer").click()
+    await page.getByRole("link", { name: "Ines Drawer" }).click()
+    await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
     await page.getByRole("button", { name: /^edit$/i }).click()
 
     const dialog = page.getByRole("dialog")
@@ -126,7 +128,8 @@ test.describe("lead CRUD", () => {
     const id = await signUp(page)
     await seedLead(page, id.stamp)
 
-    await leadRow(page, "Ines Drawer").click()
+    await page.getByRole("link", { name: "Ines Drawer" }).click()
+    await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
     await page.getByRole("button", { name: /^edit$/i }).click()
 
     const dialog = page.getByRole("dialog")
@@ -151,13 +154,16 @@ test.describe("lead CRUD", () => {
 
     await expect(leadRow(page, "Ines Drawer")).toBeVisible()
 
-    await leadRow(page, "Ines Drawer").click()
+    await page.getByRole("link", { name: "Ines Drawer" }).click()
+    await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
     await page.getByRole("button", { name: /^delete$/i }).click()
 
     // The confirm has to say what actually happens. It is a soft delete, not a shredder.
     await expect(page.getByText(/nothing is destroyed/i)).toBeVisible()
     await page.getByRole("button", { name: /delete lead/i }).click()
 
+    // A deleted record has nothing left to show, so it navigates back to the list.
+    await page.waitForURL("**/people")
     await expect(leadRow(page, "Ines Drawer")).toHaveCount(0)
     await expect(leadRow(page, "Someone Else")).toBeVisible()
   })

@@ -128,7 +128,8 @@ test.describe("companies", () => {
       ).json()
     ).company.id as string
 
-    await page.getByRole("row").filter({ hasText: "Ines Drawer" }).click()
+    await page.getByRole("link", { name: "Ines Drawer" }).click()
+    await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
     await expect(page.getByText("No activity yet")).toBeVisible()
 
     const trigger = page.getByRole("combobox", { name: "Company" })

@@ -1,11 +1,11 @@
 import { expect, test, type Page } from "@playwright/test"
 
 /**
- * The record drawer: open a lead, log an interaction, read it back.
+ * The lead record page: /people/{id}.
  *
  * The behaviour under test is the one thing curl cannot reach — that a log written
- * through the API appears in an open drawer without a reload, which is the realtime
- * path plus the TanStack invalidation doing its job.
+ * through the API appears on an open record without a reload, which is the realtime path
+ * plus the TanStack invalidation doing its job.
  */
 
 const API = process.env.API_URL ?? "http://localhost:8080"
@@ -51,14 +51,15 @@ async function seedLead(page: Page, stamp: string) {
   return id
 }
 
-test.describe("record drawer", () => {
-  test("opens a lead and shows an empty timeline", async ({ page }) => {
+test.describe("lead record", () => {
+  test("opens a lead at its own URL and shows an empty timeline", async ({ page }) => {
     const id = await signUp(page)
     await seedLead(page, id.stamp)
 
-    await page.getByRole("row").filter({ hasText: "Ines Drawer" }).click()
+    await page.getByRole("link", { name: "Ines Drawer" }).click()
+    await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
 
-    await expect(page.getByRole("heading", { name: "Ines Drawer" })).toBeVisible()
+    await expect(page.getByRole("heading", { level: 1, name: "Ines Drawer" })).toBeVisible()
     await expect(page.getByText("No activity yet")).toBeVisible()
   })
 
@@ -66,7 +67,8 @@ test.describe("record drawer", () => {
     const id = await signUp(page)
     await seedLead(page, id.stamp)
 
-    await page.getByRole("row").filter({ hasText: "Ines Drawer" }).click()
+    await page.getByRole("link", { name: "Ines Drawer" }).click()
+    await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
     await expect(page.getByText("No activity yet")).toBeVisible()
 
     await page.getByPlaceholder("Add a note").fill("Quoted three bundles of shingles.")
@@ -81,7 +83,8 @@ test.describe("record drawer", () => {
     const id = await signUp(page)
     await seedLead(page, id.stamp)
 
-    await page.getByRole("row").filter({ hasText: "Ines Drawer" }).click()
+    await page.getByRole("link", { name: "Ines Drawer" }).click()
+    await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
 
     await page.getByRole("button", { name: "Call" }).click()
     await page.getByPlaceholder("What was said?").fill("Left voicemail, three attempts.")
@@ -94,7 +97,8 @@ test.describe("record drawer", () => {
     const id = await signUp(page)
     await seedLead(page, id.stamp)
 
-    await page.getByRole("row").filter({ hasText: "Ines Drawer" }).click()
+    await page.getByRole("link", { name: "Ines Drawer" }).click()
+    await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
 
     // Direction is hidden until the kind is email — it is meaningless elsewhere.
     await expect(page.getByRole("button", { name: "Inbound" })).toHaveCount(0)
@@ -114,7 +118,8 @@ test.describe("record drawer", () => {
     const id = await signUp(page)
     await seedLead(page, id.stamp)
 
-    await page.getByRole("row").filter({ hasText: "Ines Drawer" }).click()
+    await page.getByRole("link", { name: "Ines Drawer" }).click()
+    await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
 
     // Whitespace is not a note. Submitting an empty one writes a row nobody can read.
     await page.getByPlaceholder("Add a note").fill("   ")
@@ -125,7 +130,8 @@ test.describe("record drawer", () => {
     const id = await signUp(page)
     const personId = await seedLead(page, id.stamp)
 
-    await page.getByRole("row").filter({ hasText: "Ines Drawer" }).click()
+    await page.getByRole("link", { name: "Ines Drawer" }).click()
+    await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
     await expect(page.getByText("No activity yet")).toBeVisible()
 
     // A stage move is the most important thing that happens to a lead. If PATCH does not
@@ -152,13 +158,38 @@ test.describe("record drawer", () => {
     await expect(page.getByText("Stage change")).toHaveCount(1)
   })
 
+  test("a record that does not exist says so instead of rendering an empty shell", async ({
+    page,
+  }) => {
+    await signUp(page)
+    // A stale link, or a record deleted in another tab. The page must not hang on a
+    // spinner or crash — it has nothing to show and says why.
+    await page.goto("/people/11111111-1111-4111-8111-111111111111")
+    await expect(page.getByText("This lead is not here")).toBeVisible({ timeout: 15_000 })
+  })
+
+  test("the browser back button returns to the list", async ({ page }) => {
+    const id = await signUp(page)
+    await seedLead(page, id.stamp)
+
+    await page.getByRole("link", { name: "Ines Drawer" }).click()
+    await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
+    await expect(page.getByRole("heading", { level: 1, name: "Ines Drawer" })).toBeVisible()
+
+    // The drawer could not do this, which was half the reason for the route.
+    await page.goBack()
+    await page.waitForURL("**/people")
+    await expect(page.getByRole("heading", { name: "Leads" })).toBeVisible()
+  })
+
   test("an activity logged elsewhere appears without a reload", async ({ page }) => {
     const id = await signUp(page)
     // The same id the drawer will be opened on. Logging against a different record with
     // the same name would test nothing.
     const personId = await seedLead(page, id.stamp)
 
-    await page.getByRole("row").filter({ hasText: "Ines Drawer" }).click()
+    await page.getByRole("link", { name: "Ines Drawer" }).click()
+    await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
     await expect(page.getByText("No activity yet")).toBeVisible()
 
     // Written straight through the API rather than the form, standing in for a

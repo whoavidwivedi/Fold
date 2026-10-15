@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useMemo, useRef, useState } from "react"
 import {
   useReactTable,
@@ -37,7 +38,6 @@ import {
   rowClass,
 } from "@/components/data/record-table"
 import { STAGES, StageBadge } from "@/components/people/fields"
-import { RecordDrawer } from "@/components/people/record-drawer"
 
 const PAGE_SIZE = 50
 
@@ -73,11 +73,6 @@ export function PeopleTable() {
   const [stage, setStage] = useState("")
   const [cursor, setCursor] = useState<string | undefined>()
   const [pageIndex, setPageIndex] = useState(0)
-
-  // Which record the drawer is showing. Null means closed. Not in the URL yet — a
-  // linked record view is worth doing properly, with its own route, rather than
-  // bolting a search param onto a modal.
-  const [openId, setOpenId] = useState<string | null>(null)
 
   const [createOpen, setCreateOpen] = useState(false)
   const [createDraft, setCreateDraft] = useState<Draft>(EMPTY_LEAD)
@@ -150,15 +145,11 @@ export function PeopleTable() {
         // you give it role="button". So the accessible control is a real button here,
         // and the row handler below is the pointer shortcut that mirrors it.
         cell: ({ row }) => (
-          <button
-            type="button"
-            onClick={() => setOpenId(row.original.id)}
-            className={nameButtonClass()}
-          >
+          <Link href={`/people/${row.original.id}`} className={nameButtonClass()}>
             {[row.original.firstName, row.original.lastName]
               .filter(Boolean)
               .join(" ") || "Unnamed"}
-          </button>
+          </Link>
         ),
       },
       {
@@ -350,7 +341,6 @@ export function PeopleTable() {
             return (
               <TableRow
                 key={row.id}
-                onClick={() => setOpenId(row.original.id)}
                 className={rowClass(true)}
                 style={{
                   ...gridRow(COLUMN_WIDTHS),
@@ -370,13 +360,12 @@ export function PeopleTable() {
 
         <ul className="divide-border divide-y overflow-hidden rounded-lg border md:hidden">
           {people.map((person) => (
-            <li key={person.id} className="flex flex-col gap-1 p-3">
-              {/* Spans, not divs: a button's content model is phrasing content only.
-                  The utility classes lay them out identically. */}
-              <button
-                type="button"
-                onClick={() => setOpenId(person.id)}
-                className="flex w-full flex-col gap-1 text-left"
+            <li key={person.id} className="border-b last:border-b-0">
+              {/* A link, so the record is middle-clickable and the status bar shows where
+                  it goes. The whole card is the target. */}
+              <Link
+                href={`/people/${person.id}`}
+                className="flex w-full flex-col gap-1 text-left transition-colors hover:bg-muted/50"
               >
                 <span className="flex items-baseline justify-between gap-2">
                   <span className="truncate font-medium">
@@ -394,7 +383,7 @@ export function PeopleTable() {
                   {person.source ?? "No source"}
                   {person.score > 0 && ` · score ${person.score}`}
                 </span>
-              </button>
+              </Link>
             </li>
           ))}
         </ul>
@@ -427,7 +416,6 @@ export function PeopleTable() {
         </div>
       </div>
 
-      <RecordDrawer personId={openId} onClose={() => setOpenId(null)} />
     </div>
   )
 }

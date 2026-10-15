@@ -99,9 +99,11 @@ export function gridRow(columns: string) {
 
 /** The class a body row must carry. Absolute for virtualized lists. */
 export function rowClass(virtual?: boolean) {
+  // Neither is the whole row clickable any more: the name is a link to the record, so a
+  // row that looks clickable but is not would be a lie about where the click goes.
   return virtual
     ? "absolute grid w-full transition-colors hover:bg-muted/50"
-    : "grid w-full cursor-pointer transition-colors hover:bg-muted/50"
+    : "grid w-full transition-colors hover:bg-muted/50"
 }
 
 /** A body cell. Matches the header cell's flex treatment exactly — see rule 2 above. */
