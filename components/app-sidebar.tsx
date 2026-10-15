@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 
 import { authClient } from "@/lib/auth-client"
 import { useRealtime } from "@/lib/api/realtime"
+import { WorkspaceSwitcher } from "@/components/workspace-switcher"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -61,6 +62,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
           <RealtimeIndicator status={status} reason={reason} />
         </div>
+
+        <WorkspaceSwitcher />
 
         <Separator className="hidden md:block" />
 

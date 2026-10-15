@@ -32,11 +32,21 @@ export type RealtimeStatus = "connecting" | "live" | "offline"
 type RealtimeContextValue = {
   status: RealtimeStatus
   reason: string | null
+  /**
+   * Drop the stream and connect again.
+   *
+   * Switching workspaces has to call this. The stream token is minted from a JWT that
+   * carries workspace_id, and both it and that JWT are cached, so a switch otherwise
+   * leaves the browser listening to the *previous* workspace's events while every screen
+   * shows the new one's data — live updates for someone else's records.
+   */
+  reconnect: () => void
 }
 
 const RealtimeContext = createContext<RealtimeContextValue>({
   status: "offline",
   reason: "not connected",
+  reconnect: () => {},
 })
 
 export function useRealtime() {
@@ -55,6 +65,11 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const sourceRef = useRef<EventSource | null>(null)
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const attemptRef = useRef(0)
+
+  // connect lives inside the effect, so the context needs a handle on it. A ref rather
+  // than state: putting a function in state would re-render every consumer on every
+  // stream reconnect.
+  const connectRef = useRef<() => void>(() => {})
 
   useEffect(() => {
     let cancelled = false
@@ -129,6 +144,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    connectRef.current = connect
     connect()
 
     return () => {
@@ -140,7 +156,18 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   }, [queryClient])
 
   return (
-    <RealtimeContext.Provider value={{ status, reason }}>
+    <RealtimeContext.Provider
+      value={{
+        status,
+        reason,
+        reconnect: () => {
+          sourceRef.current?.close()
+          sourceRef.current = null
+          attemptRef.current = 0
+          connectRef.current()
+        },
+      }}
+    >
       {children}
     </RealtimeContext.Provider>
   )

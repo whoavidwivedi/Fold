@@ -135,7 +135,8 @@ The short version:
 
 Working today:
 
-- Multi-tenant workspaces, invitations and roles
+- Multi-tenant workspaces, invitations, roles, and switching between them — the JWT,
+  every cached query and the live stream all move together
 - Lead CRUD end to end — create, edit, and soft-delete from the browser
 - Person records with runtime-defined custom fields (JSONB — adding a field is a row
   insert, never a migration)
