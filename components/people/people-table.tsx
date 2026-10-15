@@ -10,7 +10,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual"
 
 import { createPerson, listPersons } from "@/lib/api/generated/endpoints/people/people"
-import type { Person } from "@/lib/api/generated/model"
+import type { CreateBody, Person } from "@/lib/api/generated/model"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { RiAddLine } from "@remixicon/react"
@@ -18,36 +18,46 @@ import { RiAddLine } from "@remixicon/react"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Spinner } from "@/components/ui/spinner"
+import { PersonFormFields } from "@/components/people/person-form"
 import {
-  EMPTY_DRAFT,
-  PersonFormFields,
-  type PersonDraft,
-} from "@/components/people/person-form"
+  NewRecordTrigger,
+  RecordDialog,
+  newBody,
+  type Draft,
+} from "@/components/forms/record-form"
 import { Skeleton } from "@/components/ui/skeleton"
+import { TableCell, TableHead } from "@/components/ui/table"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
+  RecordTable,
   TableRow,
-} from "@/components/ui/table"
+  cellClass,
+  gridRow,
+  nameButtonClass,
+  rowClass,
+} from "@/components/data/record-table"
 import { STAGES, StageBadge } from "@/components/people/fields"
 import { RecordDrawer } from "@/components/people/record-drawer"
 
 const PAGE_SIZE = 50
+
+/** A lead needs one name, not both — so this is not isSubmittable, which wants all. */
+function leadHasName(draft: Draft) {
+  return (
+    (draft.firstName ?? "").trim().length > 0 ||
+    (draft.lastName ?? "").trim().length > 0
+  )
+}
+
+const EMPTY_LEAD: Draft = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  phone: "",
+  jobTitle: "",
+  lifecycleStage: "new",
+  companyId: "",
+}
 
 // One grid template for the header and every row, so the two cannot drift apart.
 //
@@ -68,6 +78,9 @@ export function PeopleTable() {
   // linked record view is worth doing properly, with its own route, rather than
   // bolting a search param onto a modal.
   const [openId, setOpenId] = useState<string | null>(null)
+
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createDraft, setCreateDraft] = useState<Draft>(EMPTY_LEAD)
 
   // Keyed on the prefix, not the id: the table creates leads and the drawer edits them,
   // and both invalidate this list.
@@ -102,20 +115,28 @@ export function PeopleTable() {
   const people = useMemo(() => query.data?.items ?? [], [query.data])
 
   const create = useMutation({
-    mutationFn: (draft: PersonDraft) =>
+    mutationFn: (draft: Draft) =>
+      // newBody drops the blanks so nothing is stored as ""; the stage and company
+      // always ride along because they are never blank.
       createPerson({
+        ...newBody(draft, []),
+        // Always sent, even when empty. CreatePerson requires both name properties to be
+        // *present* — a lead with one name is normal, and omitting the other is a 422
+        // before the handler runs. newBody drops blanks, so they go after the spread.
         firstName: draft.firstName.trim(),
         lastName: draft.lastName.trim(),
-        lifecycleStage: draft.lifecycleStage,
-        // "" means "not set" in a form and NULL in the API. Sending "" would store a
-        // blank email that renders as an empty link.
-        ...(draft.email.trim() ? { email: draft.email.trim() } : {}),
-        ...(draft.phone.trim() ? { phone: draft.phone.trim() } : {}),
-        ...(draft.jobTitle.trim() ? { jobTitle: draft.jobTitle.trim() } : {}),
+        lifecycleStage: draft.lifecycleStage || "new",
+        // Sent only when set. An empty string is a malformed uuid and the API rejects it
+        // with a 422 — the same trap the PATCH sentinel exists to avoid.
         ...(draft.companyId ? { companyId: draft.companyId } : {}),
-      }),
+      } as CreateBody),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["people"] })
+      // Closed on success, not on click: a failed save has to leave the form up with
+      // what the user typed, which is also why the dialog being open means the list
+      // behind it is inert and unassertable.
+      setCreateOpen(false)
+      setCreateDraft(EMPTY_LEAD)
     },
   })
 
@@ -132,7 +153,7 @@ export function PeopleTable() {
           <button
             type="button"
             onClick={() => setOpenId(row.original.id)}
-            className="-my-1 block max-w-full truncate px-1 text-left font-medium hover:underline underline-offset-4 focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+            className={nameButtonClass()}
           >
             {[row.original.firstName, row.original.lastName]
               .filter(Boolean)
@@ -248,11 +269,32 @@ export function PeopleTable() {
 
         <StageFilter value={stage} onChange={(next) => { setStage(next); resetPaging() }} />
 
-        <div className="ml-auto">
-          <NewLeadDialog
+        <div className="ml-auto flex items-center gap-2">
+          <NewRecordTrigger
+            label="New lead"
+            icon={<RiAddLine aria-hidden data-icon="inline-start" />}
+            onClick={() => setCreateOpen(true)}
+          />
+          <RecordDialog
+            open={createOpen}
+            onOpenChange={(next) => {
+              setCreateOpen(next)
+              if (!next) setCreateDraft(EMPTY_LEAD)
+            }}
+            title="New lead"
+            description="A name is enough to start. You can fill in the rest from their record."
+            fields={
+              <PersonFormFields
+                draft={createDraft}
+                onChange={setCreateDraft}
+                idPrefix="new-lead"
+              />
+            }
+            submitLabel="Create lead"
             pending={create.isPending}
             error={create.isError}
-            onCreate={(draft) => create.mutate(draft)}
+            canSubmit={leadHasName(createDraft) && !create.isPending}
+            onSubmit={() => create.mutate(createDraft)}
           />
         </div>
       </div>
@@ -280,63 +322,51 @@ export function PeopleTable() {
         // left a tall empty box under a short list and read as a broken frame.
         <>
         {/* Table from md up. Below that a 5-column grid shows two columns and clips the
-            rest, so a phone gets stacked cards — the pattern every CRM converges on. */}
-        <div className="hidden min-h-0 overflow-hidden rounded-lg border md:block">
-          <div
-            ref={scrollRef}
-            // Both axes scroll. The horizontal one is what keeps the last columns
-            // reachable on a phone instead of clipped by the frame.
-            className="h-full overflow-auto"
-          >
-            <Table
-              style={{ display: "grid", minWidth: TABLE_MIN_WIDTH }}
-              className="w-full"
-            >
-              <TableHeader className="bg-background sticky top-0 z-10 grid">
-                {table.getHeaderGroups().map((group) => (
-                  <TableRow key={group.id} className="grid" style={{ gridTemplateColumns: COLUMN_WIDTHS }}>
-                    {group.headers.map((header) => (
-                      <TableHead key={header.id} className="flex items-center">
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-
-              {/* Virtualized: only visible rows are mounted. A workspace with 50k leads
-                  must not create 50k DOM nodes. */}
-              <TableBody
-                className="grid"
-                style={{ height: virtualizer.getTotalSize(), position: "relative" }}
+            rest, so a phone gets stacked cards — the pattern every CRM converges on. Same
+            shell as the companies table, so the two cannot disagree about column geometry. */}
+        <RecordTable
+          className="hidden md:block"
+          columns={COLUMN_WIDTHS}
+          minWidth={TABLE_MIN_WIDTH}
+          scrollRef={scrollRef}
+          header={table
+            .getHeaderGroups()
+            .flatMap((group) => group.headers)
+            .map((header) => (
+              <TableHead key={header.id} className={cellClass()}>
+                {header.isPlaceholder
+                  ? null
+                  : flexRender(header.column.columnDef.header, header.getContext())}
+              </TableHead>
+            ))}
+          // Virtualized: only visible rows are mounted. A workspace with 50k leads must
+          // not create 50k DOM nodes, which is why the companies table cannot use this
+          // path until it needs to.
+          bodyClassName="relative"
+          bodyStyle={{ height: virtualizer.getTotalSize() }}
+        >
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const row = rows[virtualRow.index]
+            return (
+              <TableRow
+                key={row.id}
+                onClick={() => setOpenId(row.original.id)}
+                className={rowClass(true)}
+                style={{
+                  ...gridRow(COLUMN_WIDTHS),
+                  height: virtualRow.size,
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
               >
-                {virtualizer.getVirtualItems().map((virtualRow) => {
-                  const row = rows[virtualRow.index]
-                  return (
-                    <TableRow
-                      key={row.id}
-                      onClick={() => setOpenId(row.original.id)}
-                      className="absolute grid w-full cursor-pointer transition-colors hover:bg-muted/50"
-                      style={{
-                        gridTemplateColumns: COLUMN_WIDTHS,
-                        height: virtualRow.size,
-                        transform: `translateY(${virtualRow.start}px)`,
-                      }}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className="flex items-center overflow-hidden">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id} className={cellClass()}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            )
+          })}
+        </RecordTable>
 
         <ul className="divide-border divide-y overflow-hidden rounded-lg border md:hidden">
           {people.map((person) => (
@@ -430,89 +460,5 @@ function StageFilter({
         )
       })}
     </div>
-  )
-}
-/**
- * Create a lead.
- *
- * Mounted next to the search box rather than in the drawer: a new lead has nothing to
- * draw yet, so a drawer would be an empty frame with a form in it. The API has supported
- * this since the first commit — until now there was no way to reach it from a browser,
- * which made every lead in the product something only a test could create.
- */
-function NewLeadDialog({
-  pending,
-  error,
-  onCreate,
-}: {
-  pending: boolean
-  error: boolean
-  onCreate: (draft: PersonDraft) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState<PersonDraft>(EMPTY_DRAFT)
-
-  // A lead needs to be findable later, and a name is the minimum that makes it so.
-  const canSubmit =
-    (draft.firstName.trim() !== "" || draft.lastName.trim() !== "") && !pending
-
-  function close() {
-    setOpen(false)
-    setDraft(EMPTY_DRAFT)
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
-      {/* Base UI takes a custom trigger through render={...}. asChild is Radix. */}
-      <DialogTrigger
-        render={
-          <Button>
-            <RiAddLine aria-hidden data-icon="inline-start" />
-            New lead
-          </Button>
-        }
-      />
-
-      <DialogContent>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (!canSubmit) return
-            onCreate(draft)
-            close()
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>New lead</DialogTitle>
-            <DialogDescription>
-              A name is enough to start. You can fill in the rest from their record.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="my-4">
-            <PersonFormFields draft={draft} onChange={setDraft} idPrefix="new-lead" />
-          </div>
-
-          <DialogFooter>
-            {error && (
-              <p role="alert" className="text-destructive mr-auto text-sm">
-                Could not save. Try again.
-              </p>
-            )}
-            <DialogClose
-              render={
-                <Button variant="outline" type="button">
-                  Cancel
-                </Button>
-              }
-            />
-            <Button type="submit" disabled={!canSubmit}>
-              {pending && <Spinner data-icon="inline-start" />}
-              {pending ? "Saving…" : "Create lead"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   )
 }

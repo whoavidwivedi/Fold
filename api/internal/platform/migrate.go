@@ -20,6 +20,18 @@ import (
 //
 // In production, set MIGRATION_DATABASE_URL to a privileged role and run migrations as
 // a deploy step, or grant the app role the ability to create event triggers.
+// migrationLockID is an arbitrary constant. Any process running migrations takes the
+// same one, which is what serialises them.
+//
+// This exists because goose v3.29 does NOT take an advisory lock on its own — verified in
+// its source, the only mention is a comment about adding one someday. Every replica of
+// the API calls Migrate on boot, so without this they race: two processes read
+// goose_db_version at version 0, both try to CREATE TABLE, and one dies with
+// "duplicate key value violates unique constraint pg_type_typname_nsp_index". It showed up
+// first in CI, where two test packages migrate the same database concurrently, but the
+// failure mode is identical in production.
+const migrationLockID int64 = 0x0F01D
+
 func Migrate(databaseURL string) error {
 	url := databaseURL
 	if admin := os.Getenv("MIGRATION_DATABASE_URL"); admin != "" {
@@ -33,6 +45,16 @@ func Migrate(databaseURL string) error {
 	// goose speaks database/sql; pgx's stdlib shim bridges it without a new dependency.
 	db := stdlib.OpenDB(*cfg.ConnConfig)
 	defer db.Close()
+
+	// One connection, so the session advisory lock below is guaranteed to be held by the
+	// same session that runs the migrations. With a pool, the lock could sit on an idle
+	// connection while goose ran on another one and the lock would guard nothing.
+	db.SetMaxOpenConns(1)
+
+	if _, err := db.Exec("SELECT pg_advisory_lock($1)", migrationLockID); err != nil {
+		return fmt.Errorf("acquire migration lock: %w", err)
+	}
+	defer db.Exec("SELECT pg_advisory_unlock($1)", migrationLockID)
 
 	goose.SetBaseFS(migrations.FS)
 	goose.SetLogger(goose.NopLogger())

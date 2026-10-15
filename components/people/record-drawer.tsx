@@ -18,7 +18,12 @@ import {
   getPerson,
   updatePerson,
 } from "@/lib/api/generated/endpoints/people/people"
-import type { Entry, LogBody, Person } from "@/lib/api/generated/model"
+import type {
+  Entry,
+  LogBody,
+  Person,
+  UpdateBodyLifecycleStage,
+} from "@/lib/api/generated/model"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -59,11 +64,12 @@ import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { StageBadge } from "@/components/people/fields"
+import { NO_COMPANY, PersonFormFields } from "@/components/people/person-form"
 import {
-  NO_COMPANY,
-  PersonFormFields,
-  type PersonDraft,
-} from "@/components/people/person-form"
+  RecordDialog,
+  updateBody,
+  type Draft,
+} from "@/components/forms/record-form"
 
 const PAGE_SIZE = 50
 
@@ -463,15 +469,15 @@ function CompanyField({ person }: { person: Person }) {
   )
 }
 
-/** Turn a loaded Person into the form's draft shape. */
-function toDraft(person: Person): PersonDraft {
+/** Turn a loaded Person into the shared form draft. */
+function toDraft(person: Person): Draft {
   return {
     firstName: person.firstName,
     lastName: person.lastName,
     email: person.email ?? "",
     phone: person.phone ?? "",
     jobTitle: person.jobTitle ?? "",
-    lifecycleStage: person.lifecycleStage as PersonDraft["lifecycleStage"],
+    lifecycleStage: person.lifecycleStage,
     companyId: person.companyId ?? "",
   }
 }
@@ -487,7 +493,8 @@ function toDraft(person: Person): PersonDraft {
 function EditLeadDialog({ person }: { person: Person }) {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState<PersonDraft>(() => toDraft(person))
+  const [draft, setDraft] = useState<Draft>(() => toDraft(person))
+  const [failed, setFailed] = useState(false)
 
   // Re-seed when the record changes underneath, so reopening after a realtime update
   // shows current values rather than the ones from when the dialog last opened.
@@ -499,16 +506,11 @@ function EditLeadDialog({ person }: { person: Person }) {
 
   const save = useMutation({
     mutationFn: () =>
+      // "" clears, the SQL's NULLIF turns it into a real NULL, and the company
+      // sentinel unassigns. updateBody() is the single place that rule lives.
       updatePerson(person.id, {
-        firstName: draft.firstName.trim(),
-        lastName: draft.lastName.trim(),
-        lifecycleStage: draft.lifecycleStage,
-        // undefined leaves a field alone; "" clears it. The SQL's NULLIF turns that
-        // empty string into a real NULL, so clearing removes the value instead of
-        // storing a blank one.
-        email: draft.email.trim(),
-        phone: draft.phone.trim(),
-        jobTitle: draft.jobTitle.trim(),
+        ...updateBody(draft, []),
+        lifecycleStage: draft.lifecycleStage as UpdateBodyLifecycleStage,
         companyId: draft.companyId || NO_COMPANY,
       }),
     onSuccess: async () => {
@@ -517,9 +519,6 @@ function EditLeadDialog({ person }: { person: Person }) {
       setOpen(false)
     },
   })
-
-  const canSubmit =
-    (draft.firstName.trim() !== "" || draft.lastName.trim() !== "") && !save.isPending
 
   return (
     <Dialog
@@ -538,48 +537,38 @@ function EditLeadDialog({ person }: { person: Person }) {
         }
       />
 
-      <DialogContent>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (canSubmit) save.mutate()
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>Edit lead</DialogTitle>
-            <DialogDescription>
-              Changing the stage records it on this lead&apos;s timeline.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="my-4">
-            <PersonFormFields
-              draft={draft}
-              onChange={setDraft}
-              idPrefix={`edit-${person.id}`}
-            />
-          </div>
-
-          <DialogFooter>
-            {save.isError && (
-              <p role="alert" className="text-destructive mr-auto text-sm">
-                Could not save. Try again.
-              </p>
-            )}
-            <DialogClose
-              render={
-                <Button variant="outline" type="button">
-                  Cancel
-                </Button>
-              }
-            />
-            <Button type="submit" disabled={!canSubmit}>
-              {save.isPending && <Spinner data-icon="inline-start" />}
-              {save.isPending ? "Saving…" : "Save changes"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
+      <RecordDialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next)
+          if (next) setDraft(toDraft(person))
+        }}
+        title="Edit lead"
+        description="Changing the stage records it on this lead's timeline."
+        fields={
+          <PersonFormFields
+            draft={draft}
+            onChange={setDraft}
+            idPrefix={`edit-${person.id}`}
+          />
+        }
+        submitLabel="Save changes"
+        pending={save.isPending}
+        error={save.isError || failed}
+        // Either name is enough: a lead with one is findable.
+        canSubmit={
+          ((draft.firstName ?? "").trim() || (draft.lastName ?? "").trim()).length > 0 &&
+          !save.isPending
+        }
+        onSubmit={async () => {
+          setFailed(false)
+          try {
+            await save.mutateAsync()
+          } catch {
+            setFailed(true)
+          }
+        }}
+      />
     </Dialog>
   )
 }
@@ -617,7 +606,7 @@ function DeleteLeadDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <Button variant="ghost" size="sm" className="text-destructive">
+          <Button variant="destructive" size="sm">
             Delete
           </Button>
         }
