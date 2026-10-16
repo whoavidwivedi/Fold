@@ -49,7 +49,18 @@ const buttonVariants = cva(
     // 50% and not rounded-full's 9999px: 9999px is clamped down to half the height, so
     // animating from it would hold a full pill for nearly the whole duration and then
     // snap.
-    "transition-[border-radius] duration-[length:var(--m3-spring-expressive-fast-spatial-duration)] ease-[var(--m3-spring-expressive-fast-spatial)]",
+    // Two curves for one property, and the direction is the whole trick.
+    //
+    // The base is what runs when `:active` is REMOVED — the release — and it must not
+    // overshoot. A spatial spring on the way back carries the radius past the resting
+    // shape, and on a pill "past" means past 50%, which the browser clamps: the button
+    // visibly swells wider than it rests before settling. That reads as a wobble, not a
+    // spring.
+    //
+    // `:active` overrides with the spatial spring, so going IN still bounces. Press in
+    // springy, press out settled — which is what the bounce is for.
+    "transition-[border-radius] duration-[length:var(--m3-duration-medium1)] ease-[var(--m3-easing-emphasized)]",
+    "active:not-aria-[haspopup]:duration-[length:var(--m3-spring-expressive-fast-spatial-duration)] active:not-aria-[haspopup]:ease-[var(--m3-spring-expressive-fast-spatial)]",
     // M3 Expressive PressedContainerShape is 8/8/12/16/16 across XS/S/M/L/XL. The size
     // sets its own; this is the fallback.
     "active:not-aria-[haspopup]:rounded-[8px]",
@@ -64,7 +75,7 @@ const buttonVariants = cva(
     // The state layer. Installs an ::after; the t-state-* utilities drive its opacity.
     "t-state-layer t-state-hover t-state-press t-state-focus",
     "focus-visible:ring-ring focus-visible:ring-3 focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:outline-none",
-    "focus-visible:transition-[border-radius] focus-visible:rounded-[8px]",
+    "focus-visible:rounded-[8px]",
     "aria-invalid:ring-destructive/20 aria-invalid:ring-3 dark:aria-invalid:ring-destructive/40",
     "[&_svg]:pointer-events-none [&_svg]:shrink-0",
   ].join(" "),
@@ -84,20 +95,20 @@ const buttonVariants = cva(
         // M3 Expressive: round is the default and the pill. Square is a per-size
         // radius, not one value — 12/12/16/28/28 across XS/S/M/L/XL — so the size
         // decides and this only says which one is in play.
-        round: "rounded-[50%]",
+        round: "",
         square: "",
       },
       size: {
         // md-comp-*-button: container-height 40, label-large, with-icon icon 18.
         default:
-          "h-10 gap-2 rounded-[12px] px-4 data-[shape=round]:rounded-[50%] text-[length:var(--m3-label-large-size)] leading-[length:var(--m3-label-large-line-height)] tracking-[length:var(--m3-label-large-tracking)] has-data-[icon=inline-end]:pe-3 has-data-[icon=inline-start]:ps-3 [&_svg:not([class*='size-'])]:size-5",
-        sm: "h-10 gap-2 rounded-[12px] px-4 data-[shape=round]:rounded-[50%] text-[length:var(--m3-label-large-size)] leading-[length:var(--m3-label-large-line-height)] tracking-[length:var(--m3-label-large-tracking)] has-data-[icon=inline-end]:pe-3 has-data-[icon=inline-start]:ps-3 [&_svg:not([class*='size-'])]:size-5",
-        xs: "h-8 gap-1.5 rounded-[12px] px-3 data-[shape=round]:rounded-[50%] text-[length:var(--m3-label-medium-size)] leading-[length:var(--m3-label-medium-line-height)] tracking-[length:var(--m3-label-medium-tracking)] [&_svg:not([class*='size-'])]:size-4",
-        lg: "h-14 gap-2 rounded-[16px] px-6 data-[shape=round]:rounded-[50%] text-[length:var(--m3-title-medium-size)] leading-[length:var(--m3-title-medium-line-height)] active:not-aria-[haspopup]:rounded-[12px] data-pressed:not-aria-[haspopup]:rounded-[12px] [&_svg:not([class*='size-'])]:size-6",
-        icon: "size-10 rounded-[12px] data-[shape=round]:rounded-[50%] [&_svg:not([class*='size-'])]:size-6",
-        "icon-lg": "size-14 rounded-[16px] data-[shape=round]:rounded-[50%] [&_svg:not([class*='size-'])]:size-7",
-        "icon-sm": "size-8 rounded-[12px] data-[shape=round]:rounded-[50%] [&_svg:not([class*='size-'])]:size-4",
-        "icon-xs": "size-6 rounded-[12px] data-[shape=round]:rounded-[50%] [&_svg:not([class*='size-'])]:size-3.5",
+          "h-10 gap-2 rounded-[20px] px-4 text-[length:var(--m3-label-large-size)] leading-[length:var(--m3-label-large-line-height)] tracking-[length:var(--m3-label-large-tracking)] has-data-[icon=inline-end]:pe-3 has-data-[icon=inline-start]:ps-3 [&_svg:not([class*='size-'])]:size-5",
+        sm: "h-10 gap-2 rounded-[20px] px-4 text-[length:var(--m3-label-large-size)] leading-[length:var(--m3-label-large-line-height)] tracking-[length:var(--m3-label-large-tracking)] has-data-[icon=inline-end]:pe-3 has-data-[icon=inline-start]:ps-3 [&_svg:not([class*='size-'])]:size-5",
+        xs: "h-8 gap-1.5 rounded-[16px] px-3 text-[length:var(--m3-label-medium-size)] leading-[length:var(--m3-label-medium-line-height)] tracking-[length:var(--m3-label-medium-tracking)] [&_svg:not([class*='size-'])]:size-4",
+        lg: "h-14 gap-2 rounded-[28px] px-6 text-[length:var(--m3-title-medium-size)] leading-[length:var(--m3-title-medium-line-height)] active:not-aria-[haspopup]:rounded-[12px] data-pressed:not-aria-[haspopup]:rounded-[12px] [&_svg:not([class*='size-'])]:size-6",
+        icon: "size-10 rounded-[20px] [&_svg:not([class*='size-'])]:size-6",
+        "icon-lg": "size-14 rounded-[28px] [&_svg:not([class*='size-'])]:size-7",
+        "icon-sm": "size-8 rounded-[16px] [&_svg:not([class*='size-'])]:size-4",
+        "icon-xs": "size-6 rounded-[12px] [&_svg:not([class*='size-'])]:size-3.5",
       },
     },
     defaultVariants: { variant: "default", size: "default", shape: "round" },
@@ -118,9 +129,10 @@ function Button({
       data-shape={shape}
       className={cn(
         buttonVariants({ variant, size, shape, className }),
-        // M3 dims the label to 0.38 and the container to 0.12, separately. One
-        // opacity on the element lands on neither.
-        "disabled:pointer-events-none disabled:text-foreground/38 disabled:before:bg-foreground/12",
+        // Solid, not a wash. M3 dims a disabled label and a disabled container with
+        // separate TOKENS; an alpha on the whole element lands on neither and, worse,
+        // is a different colour against every background behind it.
+        "disabled:pointer-events-none disabled:text-muted-foreground disabled:before:bg-muted",
         className,
       )}
       {...props}

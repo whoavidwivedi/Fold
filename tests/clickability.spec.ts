@@ -102,14 +102,23 @@ test.describe("clickability", () => {
       }))
 
     const idle = await shapes()
-    // 50%, not rounded-full's 9999px. A border-radius animates on its SPECIFIED value and
-    // 9999px is clamped down to half the height, so animating from it would hold a full
-    // pill for nearly the whole duration and then snap — the morph would not read.
-    expect(idle.radius, "a round button rests as a pill").toBe("50%")
-    // M3 Expressive "expressive fast spatial" spring. Asserted because the whole feel of
-    // the press is that it overshoots, and every other curve here is critically damped.
-    expect(idle.spring, "the press morph runs on a spatial spring").toBe(
-      "cubic-bezier(0.42, 1.67, 0.21, 0.9)",
+    // Half the height, written down. Neither keyword works:
+    //
+    //   rounded-full is 9999px, which the browser clamps down to half the height. It
+    //   renders a correct pill, but a border-radius animates on its SPECIFIED value, so
+    //   animating from 9999px holds the pill for nearly the whole duration and snaps.
+    //
+    //   rounded-[50%] animates properly but renders true ELLIPTICAL corners on a wide
+    //   button, which is visibly not a pill — it was, and it looked wrong.
+    //
+    // 20px is half of the 40px container, so it is a real stadium and a real number.
+    expect(idle.radius, "a round button rests as a true pill").toBe("20px")
+    // Idle is the RELEASE direction, and it must not overshoot. A spatial spring coming
+    // back carries the radius past the resting shape; on a pill that means past its
+    // resting radius, which clamps, and the button swells wider than it rests before
+    // settling. That reads as a wobble, not a spring.
+    expect(idle.spring, "release settles rather than overshoots").toBe(
+      "cubic-bezier(0.2, 0, 0, 1)",
     )
 
     // evaluate, not boundingBox: pressing opens the dialog over the button, and
@@ -132,7 +141,14 @@ test.describe("clickability", () => {
 
     // Mid-morph, so the value is a calc() partway to 8px rather than "8px". What matters
     // is that it is no longer 50% and that the fill moved with it.
-    expect(pressed.radius, "pressing should morph the shape").not.toBe("50%")
+    expect(pressed.radius, "pressing should morph the shape").not.toBe("20px")
+    // The PRESS direction is the spatial spring, which overshoots — that is the bounce,
+    // and every other curve on this button is critically damped.
+    expect(pressed.spring, "pressing in runs on a spatial spring").toBe(
+      "cubic-bezier(0.42, 1.67, 0.21, 0.9)",
+    )
+    // M3 Expressive PressedContainerShape at this size is 8px.
+    expect(parseFloat(pressed.radius) || 0, "pressed shape nears 8px").toBeLessThan(14)
     expect(pressed.fillRadius, "the fill inherits the morph").toBe(pressed.radius)
 
     // And the button itself does not move or resize — only its corners change.

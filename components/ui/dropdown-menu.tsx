@@ -94,7 +94,7 @@ function DropdownMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "group/dropdown-menu-item relative flex min-h-12 cursor-default items-center gap-3 rounded-[length:var(--m3-shape-xs)] px-3 text-[length:var(--m3-label-large-size)] outline-hidden select-none t-state-layer t-state-hover t-state-press not-data-[variant=destructive]:focus:**:text-accent-foreground data-inset:pl-7 data-[variant=destructive]:text-destructive data-[variant=destructive]:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive",
+        "group/dropdown-menu-item relative flex min-h-12 cursor-default items-center gap-3 rounded-[length:var(--m3-shape-xs)] px-3 text-[length:var(--m3-label-large-size)] outline-hidden select-none t-state-layer t-state-hover t-state-press not-data-[variant=destructive]:focus:**:text-accent-foreground data-inset:pl-7 data-[variant=destructive]:text-destructive data-[variant=destructive]:text-destructive dark:data-[variant=destructive]:focus:bg-destructive-container data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive",
         className
       )}
       {...props}
