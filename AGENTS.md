@@ -212,6 +212,33 @@ The highest-value section. These have all cost real time.
 - **Tailwind v4 sets the standalone `scale` property, not `transform`.** A test that reads
   `getComputedStyle(el, "::before").transform` sees `"none"` while the button is pressed,
   and passes forever without checking anything.
+- **Interaction is a state layer. `hover:bg-*` is a bug.** Material 3 expresses hover,
+  press and focus as a semi-transparent covering of the element's own `currentColor` at
+  fixed opacities — 0.08 hover, 0.12 press, 0.12 focus (`md-sys-state`). That is
+  `t-state-layer t-state-hover t-state-press t-state-focus` in `globals.css`. Adding a
+  background change on hover instead gives you two mechanisms for one behaviour, and the
+  wrong colour: the ones already in this repo were `bg-muted/50`, which is grey and
+  about 3% of luminance over white. `currentColor` is not a shortcut, it is the spec —
+  the layer is `on-primary` on a filled button and `primary` on an outlined one.
+- **`t-surface-*` is the resting appearance and nothing else.** It used to carry its own
+  `:hover`, which is the duplication above. There is deliberately no bare `t-surface`
+  utility: it once set a transparent border, which then beat every `t-surface-*` by source
+  order and left the outlined button with no visible border — it read as unstyled text.
+  Each concrete surface owns both its fill and its border, and the button's base sets
+  `before:border` for width and style only, never a colour.
+- **`t-state-layer` sets `position: relative` because its `::after` needs a containing
+  block.** That silently fights `absolute` on the virtualized lead rows: `relative` wins
+  the row out of its translateY maths and every row stacks on the first one. It is
+  correct today only because `absolute` comes later in the class string. There is a test
+  on exactly this (`tests/states.spec.ts`) — do not delete it, and do not "tidy" the
+  class order.
+- **The ripple is three constants, from `ripple/internal/ripple.ts`.** Grow 450ms, and a
+  layer that was down for less than 225ms *stays* that long, so a 40ms tap is still seen.
+  Touch waits 150ms before showing, or a finger that starts a scroll flashes a press
+  first. Do not shorten these to make it feel snappier; that is what they are for.
+- **Everything `--m3-*` is copied from `material-components/material-web`.** Do not edit
+  a value from memory. `docs/m3.md` records the provenance of each one and what we chose
+  not to adopt.
 - **A crop is invisible to the test suite; a clip is not.** `tests/mobile.spec.ts` walks
   the DOM for elements whose content is wider than their box, whose `overflow-x` is hidden
   or clip rather than auto or scroll, and which are not ellipsising — and asserts the

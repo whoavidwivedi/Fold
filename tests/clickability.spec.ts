@@ -89,16 +89,37 @@ test.describe("clickability", () => {
     await expect(link).toHaveAttribute("href", /\/people\/[0-9a-f-]{36}$/)
   })
 
-  test("pressing a button shrinks its fill, not the button", async ({ page }) => {
+  test("pressing a button morphs its shape, not its size", async ({ page }) => {
     await signUp(page)
 
     const button = page.getByRole("button", { name: /new lead/i })
-    // Tailwind v4 sets the standalone `scale` property, so `transform` reads "none" both
-    // idle and pressed. Reading the wrong one makes this pass forever.
-    const scaleOf = () =>
-      button.evaluate((el) => getComputedStyle(el, "::before").scale)
+    const shapes = () =>
+      button.evaluate((el) => ({
+        radius: getComputedStyle(el).borderTopLeftRadius,
+        // rounded-[inherit] on the fill is what carries the morph through to it.
+        fillRadius: getComputedStyle(el, "::before").borderTopLeftRadius,
+        spring: getComputedStyle(el).transitionTimingFunction,
+      }))
 
-    expect(await scaleOf(), "idle").toBe("none")
+    const idle = await shapes()
+    // Half the height, written down. Neither keyword works:
+    //
+    //   rounded-full is 9999px, which the browser clamps down to half the height. It
+    //   renders a correct pill, but a border-radius animates on its SPECIFIED value, so
+    //   animating from 9999px holds the pill for nearly the whole duration and snaps.
+    //
+    //   rounded-[50%] animates properly but renders true ELLIPTICAL corners on a wide
+    //   button, which is visibly not a pill — it was, and it looked wrong.
+    //
+    // 20px is half of the 40px container, so it is a real stadium and a real number.
+    expect(idle.radius, "a round button rests as a true pill").toBe("20px")
+    // Idle is the RELEASE direction, and it must not overshoot. A spatial spring coming
+    // back carries the radius past the resting shape; on a pill that means past its
+    // resting radius, which clamps, and the button swells wider than it rests before
+    // settling. That reads as a wobble, not a spring.
+    expect(idle.spring, "release settles rather than overshoots").toBe(
+      "cubic-bezier(0.2, 0, 0, 1)",
+    )
 
     // evaluate, not boundingBox: pressing opens the dialog over the button, and
     // boundingBox waits for actionability, which would then time out on the very
@@ -106,24 +127,35 @@ test.describe("clickability", () => {
     const rect = () =>
       button.evaluate((el) => {
         const r = el.getBoundingClientRect()
-        return { x: r.x, y: r.y }
+        return { x: r.x, y: r.y, w: r.width, h: r.height }
       })
 
     const before = await rect()
     const box = (await button.boundingBox())!
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
     await page.mouse.down()
-    await page.waitForTimeout(250)
-    const pressed = await scaleOf()
+    await page.waitForTimeout(120)
+    const pressed = await shapes()
     const during = await rect()
     await page.mouse.up()
 
-    expect(pressed, "the ::before layer scales on press").toBe("0.99")
+    // Mid-morph, so the value is a calc() partway to 8px rather than "8px". What matters
+    // is that it is no longer 50% and that the fill moved with it.
+    expect(pressed.radius, "pressing should morph the shape").not.toBe("20px")
+    // The PRESS direction is the spatial spring, which overshoots — that is the bounce,
+    // and every other curve on this button is critically damped.
+    expect(pressed.spring, "pressing in runs on a spatial spring").toBe(
+      "cubic-bezier(0.42, 1.67, 0.21, 0.9)",
+    )
+    // M3 Expressive PressedContainerShape at this size is 8px.
+    expect(parseFloat(pressed.radius) || 0, "pressed shape nears 8px").toBeLessThan(14)
+    expect(pressed.fillRadius, "the fill inherits the morph").toBe(pressed.radius)
 
-    // And the button itself never moves, which is the whole reason the effect lives on a
-    // pseudo-element rather than on the element.
+    // And the button itself does not move or resize — only its corners change.
     expect(Math.round(during.x), "button x while pressed").toBe(Math.round(before.x))
     expect(Math.round(during.y), "button y while pressed").toBe(Math.round(before.y))
+    expect(Math.round(during.w), "button width while pressed").toBe(Math.round(before.w))
+    expect(Math.round(during.h), "button height while pressed").toBe(Math.round(before.h))
   })
 
   test("anything clickable shows a pointer, and disabled things do not", async ({ page }) => {

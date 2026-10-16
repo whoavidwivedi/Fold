@@ -94,8 +94,8 @@ export function CompaniesTable() {
   return (
     <div className="flex h-full flex-col gap-4 p-4 md:p-6">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight">Companies</h1>
-        <p className="text-muted-foreground text-sm">
+        <h1 className="t-type-headline-small">Companies</h1>
+        <p className="text-muted-foreground t-type-body-small">
           {query.isPending
             ? "Loading…"
             : `${query.data?.total ?? 0} in this workspace`}
@@ -152,7 +152,7 @@ export function CompaniesTable() {
             <p className="font-medium">
               {search ? "Nothing matches that search" : "No companies yet"}
             </p>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground t-type-body-small">
               {search
                 ? "Try a shorter fragment, or part of the domain."
                 : "Add a company to group the leads that work there."}
@@ -186,12 +186,12 @@ export function CompaniesTable() {
                 </Link>
               </TableCell>
               <TableCell className={cellClass()}>
-                <span className="text-muted-foreground block truncate text-sm">
+                <span className="text-muted-foreground t-type-body-medium block truncate">
                   {company.domain ?? "—"}
                 </span>
               </TableCell>
               <TableCell className={cellClass()}>
-                <span className="text-muted-foreground block truncate text-sm">
+                <span className="text-muted-foreground t-type-body-medium block truncate">
                   {company.industry ?? "—"}
                 </span>
               </TableCell>

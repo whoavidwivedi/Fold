@@ -151,17 +151,17 @@
    brand value to re-skin the whole product without touching a single component.
 --------------------------------------------------------------------------- */
 @theme {
-  --color-brand-50:  oklch(0.97 0.02 264);
-  --color-brand-100: oklch(0.93 0.04 264);
-  --color-brand-200: oklch(0.87 0.07 264);
-  --color-brand-300: oklch(0.78 0.11 264);
-  --color-brand-400: oklch(0.68 0.16 264);
-  --color-brand-500: oklch(0.58 0.21 264);
-  --color-brand-600: oklch(0.49 0.22 264);
-  --color-brand-700: oklch(0.40 0.18 264);
-  --color-brand-800: oklch(0.32 0.13 264);
-  --color-brand-900: oklch(0.25 0.09 264);
-  --color-brand-950: oklch(0.18 0.06 264);
+  --color-brand-50:  oklch(0.97 0.02 258);
+  --color-brand-100: oklch(0.93 0.04 258);
+  --color-brand-200: oklch(0.87 0.07 258);
+  --color-brand-300: oklch(0.78 0.11 258);
+  --color-brand-400: oklch(0.68 0.16 258);
+  --color-brand-500: oklch(0.58 0.21 258);
+  --color-brand-600: oklch(0.49 0.22 258);
+  --color-brand-700: oklch(0.40 0.18 258);
+  --color-brand-800: oklch(0.32 0.13 258);
+  --color-brand-900: oklch(0.25 0.09 258);
+  --color-brand-950: oklch(0.18 0.06 258);
 }
 
 /* ---------------------------------------------------------------------------
@@ -218,22 +218,17 @@
    colour, and splitting "resting fill" from "hover fill" across two class
    lists is how the two drift apart.
 --------------------------------------------------------------------------- */
-@utility t-surface {
-  /* The layer itself: a border that is transparent until a surface gives it
-     one, clipped to the padding box so the fill never bleeds under the edge. */
-  &::before {
-    border-color: transparent;
-  }
-}
+/* There is deliberately no bare `t-surface` utility. It used to set a transparent
+   border, which then won over every `t-surface-*` by source order and left the
+   outlined button with no visible border at all — it read as unstyled text. Each
+   concrete surface below owns both its fill and its border, and there is no default
+   for a surface to inherit. */
 
 @utility t-surface-primary {
   color: var(--primary-foreground);
   &::before {
     background-color: var(--primary);
-    border-color: transparent;
-  }
-  &:hover::before {
-    background-color: color-mix(in oklab, var(--primary) 88%, transparent);
+    border-color: var(--primary);
   }
 }
 
@@ -243,42 +238,34 @@
     background-color: var(--background);
     border-color: var(--border);
   }
-  &:hover::before {
-    background-color: var(--muted);
-  }
 }
 
 @utility t-surface-muted {
-  color: var(--secondary-foreground);
+  color: var(--secondary-foreground-container);
   &::before {
-    background-color: var(--secondary);
-    border-color: transparent;
-  }
-  &:hover::before {
-    background-color: color-mix(in oklab, var(--secondary) 92%, var(--foreground));
+    background-color: var(--secondary-container);
+    border-color: var(--secondary-container);
   }
 }
 
 @utility t-surface-ghost {
   color: var(--foreground);
   &::before {
-    background-color: transparent;
-    border-color: transparent;
-  }
-  &:hover::before,
-  &[aria-expanded]::before {
-    background-color: var(--muted);
+    background-color: var(--background);
+    border-color: var(--background);
   }
 }
 
 @utility t-surface-destructive {
-  color: var(--destructive);
+  color: var(--destructive-foreground);
+  /* The SOLID role, not the container tone. `destructive-container` is the pale wash M3
+     uses for a badge or a low-emphasis container — on a button whose whole job is to
+     delete a record it read as a soft pink chip, i.e. as the *least* important control on
+     the page. A destructive action is the one that must not be mistaken for anything
+     else. */
   &::before {
-    background-color: color-mix(in oklab, var(--destructive) 12%, transparent);
-    border-color: color-mix(in oklab, var(--destructive) 22%, transparent);
-  }
-  &:hover::before {
-    background-color: color-mix(in oklab, var(--destructive) 20%, transparent);
+    background-color: var(--destructive);
+    border-color: var(--destructive);
   }
 }
 
@@ -288,6 +275,512 @@
   transition-property: --tw-ring-color, box-shadow;
   transition-timing-function: var(--ease-out-ui);
   transition-duration: var(--duration-fast);
+}
+
+/* ---------------------------------------------------------------------------
+   Material 3 tokens.
+
+   Every value below is copied from material-components/material-web
+   tokens/versions/v0_192/ — see docs/m3.md for the provenance of each. Nothing
+   here was typed from memory.
+
+   Prefixed `--m3-*` so they cannot be confused with the shadcn tokens they sit
+   beside. The shadcn scale still drives the components that are not part of the
+   Material 3 set.
+--------------------------------------------------------------------------- */
+@theme {
+  /* md-sys-motion — durations */
+  --m3-duration-short1: 50ms;
+  --m3-duration-short2: 100ms;
+  --m3-duration-short3: 150ms;
+  --m3-duration-short4: 200ms;
+  --m3-duration-medium1: 250ms;
+  --m3-duration-medium2: 300ms;
+  --m3-duration-medium3: 350ms;
+  --m3-duration-medium4: 400ms;
+  --m3-duration-long1: 450ms;
+  --m3-duration-long2: 500ms;
+  --m3-duration-long3: 550ms;
+  --m3-duration-long4: 600ms;
+
+  /* md-sys-motion — easing. Accelerate is for leaving, decelerate for arriving. */
+  --m3-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --m3-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --m3-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --m3-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --m3-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --m3-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --m3-easing-linear: cubic-bezier(0, 0, 1, 1);
+
+  /* ---------------------------------------------------------------------
+     M3 Expressive motion physics.
+
+     A spring has no duration, so the spec ships bezier curves that imitate one.
+     They are not interchangeable: SPATIAL springs overshoot, because position
+     and size are physical and may pass their target. EFFECTS springs are
+     critically damped and must not, because an opacity that bounces past 100%
+     clips and a colour that overshoots is just wrong.
+
+     The rule the spec gives for a pressed button is the one to remember: shape
+     and size get a spatial spring, colour and opacity get an effects spring.
+     Two springs on one interaction, because they are animating different kinds
+     of property. Using a spatial spring on the state layer is how a fade ends
+     up flashing.
+  --------------------------------------------------------------------- */
+  --m3-spring-expressive-fast-spatial: cubic-bezier(0.42, 1.67, 0.21, 0.9);
+  --m3-spring-expressive-default-spatial: cubic-bezier(0.38, 1.21, 0.22, 1);
+  --m3-spring-expressive-slow-spatial: cubic-bezier(0.39, 1.29, 0.35, 0.98);
+  --m3-spring-expressive-fast-effects: cubic-bezier(0.31, 0.94, 0.34, 1);
+  --m3-spring-expressive-default-effects: cubic-bezier(0.34, 0.8, 0.34, 1);
+  --m3-spring-expressive-slow-effects: cubic-bezier(0.34, 0.88, 0.34, 1);
+
+  /* The standard scheme is the same effects springs with spatial springs that
+     barely overshoot (stiffness 1400/700/300 against expressive's 800/380/200).
+     Chrome, lists and navigation use these; expressive is for key actions. */
+  --m3-spring-standard-fast-spatial: cubic-bezier(0.27, 1.06, 0.18, 1);
+  --m3-spring-standard-default-spatial: cubic-bezier(0.27, 1.06, 0.18, 1);
+  --m3-spring-standard-slow-spatial: cubic-bezier(0.27, 1.06, 0.18, 1);
+
+  /* Durations that pair with the springs above. Spatial is slower because a
+     shape morph you cannot follow is not a morph. */
+  --m3-spring-expressive-fast-spatial-duration: 350ms;
+  --m3-spring-expressive-default-spatial-duration: 500ms;
+  --m3-spring-expressive-slow-spatial-duration: 650ms;
+  --m3-spring-expressive-fast-effects-duration: 150ms;
+  --m3-spring-expressive-default-effects-duration: 200ms;
+  --m3-spring-expressive-slow-effects-duration: 300ms;
+
+
+  /* md-sys-shape */
+  --m3-shape-none: 0px;
+  --m3-shape-xs: 4px;
+  --m3-shape-sm: 8px;
+  --m3-shape-md: 12px;
+  --m3-shape-lg: 16px;
+  --m3-shape-xl: 28px;
+  --m3-shape-full: 9999px;
+
+  /* md-sys-state — the opacity of the overlay per interaction. */
+  --m3-state-hover: 0.08;
+  --m3-state-focus: 0.12;
+  --m3-state-pressed: 0.12;
+  --m3-state-dragged: 0.16;
+
+  /* md-sys-elevation — tonal levels. */
+  --m3-elevation-0: 0;
+  --m3-elevation-1: 1;
+  --m3-elevation-2: 3;
+  --m3-elevation-3: 6;
+  --m3-elevation-4: 8;
+  --m3-elevation-5: 12;
+
+  /* md-sys-typescale — size / line-height / tracking. */
+  --m3-label-large-size: 0.875rem;
+  --m3-label-large-line-height: 1.25rem;
+  --m3-label-large-tracking: 0.00625rem;
+  --m3-label-medium-size: 0.75rem;
+  --m3-label-medium-line-height: 1rem;
+  --m3-label-medium-tracking: 0.03125rem;
+  --m3-label-small-size: 0.6875rem;
+  --m3-label-small-line-height: 1rem;
+  --m3-label-small-tracking: 0.03125rem;
+  --m3-body-large-size: 1rem;
+  --m3-body-large-line-height: 1.5rem;
+  --m3-body-medium-size: 0.875rem;
+  --m3-body-medium-line-height: 1.25rem;
+  --m3-body-small-size: 0.75rem;
+  --m3-body-small-line-height: 1rem;
+  --m3-title-large-size: 1.375rem;
+  --m3-title-large-line-height: 1.75rem;
+  --m3-title-large-tracking: 0rem;
+  --m3-title-medium-size: 1rem;
+  --m3-title-medium-line-height: 1.5rem;
+  --m3-title-medium-tracking: 0.009375rem;
+  --m3-title-small-size: 0.875rem;
+  --m3-title-small-line-height: 1.25rem;
+  --m3-title-small-tracking: 0.00625rem;
+  --m3-headline-small-size: 1.5rem;
+  --m3-headline-small-line-height: 2rem;
+  --m3-headline-small-tracking: 0rem;
+  --m3-headline-medium-size: 1.75rem;
+  --m3-headline-medium-line-height: 2.25rem;
+  --m3-display-small-size: 2.25rem;
+  --m3-display-small-line-height: 2.5rem;
+}
+
+/* ---------------------------------------------------------------------------
+   State layers — the primitive every interactive surface in the product uses.
+
+   A semi-transparent covering of the element's own foreground colour, at a fixed
+   opacity per interaction. `currentColor` is not a shortcut, it is the spec: the
+   layer colour is `on-primary` on a filled button and `primary` on an outlined
+   one, which is exactly what `currentColor` resolves to from each element's own
+   text colour.
+
+   The opacities come from md-sys-state. This replaces every `hover:bg-muted/50`
+   in the codebase — those were faint because `muted` is grey, not because 50% is
+   low. At 8% of on-surface it reads on any background.
+--------------------------------------------------------------------------- */
+@utility t-state-layer {
+  position: relative;
+  isolation: isolate;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background-color: currentColor;
+    opacity: 0;
+    pointer-events: none;
+    /* Effects spring, not spatial: opacity must not overshoot, or the fade
+       flashes. See the note on the spring tokens above. */
+    transition: opacity var(--m3-spring-expressive-fast-effects-duration)
+      var(--m3-spring-expressive-fast-effects);
+  }
+}
+
+@utility t-state-hover {
+  &:hover::after {
+    opacity: var(--m3-state-hover);
+  }
+}
+
+@utility t-state-press {
+  &:active::after {
+    opacity: var(--m3-state-pressed);
+  }
+}
+
+@utility t-state-focus {
+  &:focus-visible::after {
+    opacity: var(--m3-state-focus);
+  }
+}
+
+/* For things that are "on": a nav item you are in, a filter you applied, a toggle
+   set. Selected is a state, so it wears a layer like any other. */
+@utility t-state-selected {
+  &[aria-current],
+  &[aria-current="page"],
+  &[aria-selected="true"],
+  &[aria-pressed="true"],
+  &[data-state="on"] {
+    &::after {
+      opacity: var(--m3-state-focus);
+    }
+  }
+}
+
+/* A disabled control shows its disabled state. M3 uses 0.12 on the container and
+   0.38 on the label; opacity-50 on the whole element lands on neither. */
+@utility t-disabled {
+  opacity: 0.38;
+}
+
+/* ---------------------------------------------------------------------------
+   Type scale, as utilities.
+
+   M3 defines fifteen roles across size, line-height and tracking. Writing them
+   as inline arbitrary values puts the numbers in six components and makes a
+   change an audit. These are the roles, named as the spec names them.
+
+   Title roles use the brand typeface and body/label use plain. We have one
+   family, so that distinction is skipped rather than faked with a weight.
+--------------------------------------------------------------------------- */
+@utility t-type-display-small {
+  font-size: var(--m3-display-small-size);
+  line-height: var(--m3-display-small-line-height);
+  font-weight: 400;
+  letter-spacing: -0.025rem;
+}
+@utility t-type-headline-small {
+  font-size: var(--m3-headline-small-size);
+  line-height: var(--m3-headline-small-line-height);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+@utility t-type-title-large {
+  font-size: var(--m3-title-large-size);
+  line-height: var(--m3-title-large-line-height);
+  font-weight: 400;
+  letter-spacing: var(--m3-title-large-tracking);
+}
+@utility t-type-title-medium {
+  font-size: var(--m3-title-medium-size);
+  line-height: var(--m3-title-medium-line-height);
+  font-weight: 500;
+  letter-spacing: var(--m3-title-medium-tracking);
+}
+@utility t-type-title-small {
+  font-size: var(--m3-title-small-size);
+  line-height: var(--m3-title-small-line-height);
+  font-weight: 500;
+  letter-spacing: var(--m3-title-small-tracking);
+}
+@utility t-type-body-large {
+  font-size: var(--m3-body-large-size);
+  line-height: var(--m3-body-large-line-height);
+  font-weight: 400;
+  letter-spacing: 0.03125rem;
+}
+@utility t-type-body-medium {
+  font-size: var(--m3-body-medium-size);
+  line-height: var(--m3-body-medium-line-height);
+  font-weight: 400;
+  letter-spacing: 0.015625rem;
+}
+@utility t-type-body-small {
+  font-size: var(--m3-body-small-size);
+  line-height: var(--m3-body-small-line-height);
+  font-weight: 400;
+  letter-spacing: 0.025rem;
+}
+@utility t-type-label-large {
+  font-size: var(--m3-label-large-size);
+  line-height: var(--m3-label-large-line-height);
+  font-weight: 500;
+  letter-spacing: var(--m3-label-large-tracking);
+}
+@utility t-type-label-medium {
+  font-size: var(--m3-label-medium-size);
+  line-height: var(--m3-label-medium-line-height);
+  font-weight: 500;
+  letter-spacing: var(--m3-label-medium-tracking);
+}
+@utility t-type-label-small {
+  font-size: var(--m3-label-small-size);
+  line-height: var(--m3-label-small-line-height);
+  font-weight: 500;
+  letter-spacing: var(--m3-label-small-tracking);
+}
+
+/* ---------------------------------------------------------------------------
+   M3 colour roles.
+
+   md-sys-color defines ~50 roles in families: primary/secondary/tertiary each
+   with an `on-` counterpart and a `-container` pair, a neutral family, five
+   `surface-container` steps, and a utility family. The rule that makes a dark
+   theme a variable swap rather than an audit is that a component never names a
+   raw colour — it names a role.
+
+   These map onto the shadcn palette already in this file rather than replacing
+   it. The one thing added outright is the `surface-container` ramp: M3 builds
+   every menu, dialog and sheet out of those five steps, and we were reaching for
+   `popover`, which is one colour doing five jobs.
+--------------------------------------------------------------------------- */
+@theme inline {
+  --m3-surface-container-lowest: var(--background);
+  --m3-surface-container-low: color-mix(in oklab, var(--muted) 30%, var(--background));
+  --m3-surface-container: var(--muted);
+  --m3-surface-container-high: color-mix(in oklab, var(--muted) 70%, var(--foreground) 4%);
+  --m3-surface-container-highest: color-mix(in oklab, var(--muted) 85%, var(--foreground) 8%);
+}
+
+/* ---------------------------------------------------------------------------
+   Material 3 colour, generated as a tonal palette.
+
+   M3 does not pick colours. It picks a **seed hue** and derives a ramp of tones from
+   it, then hands each tone a *role* — primary, on-primary, primary-container,
+   surface-container-high — and a component asks for the role, never for a colour.
+   That is the whole reason a dark theme is a variable swap rather than an audit.
+
+   Tones are written in OKLCH: L is perceptual lightness, C is chroma, H is hue. The
+   chroma curve is Material's — near zero at the extremes, peaking around tone 60-70,
+   because a fully saturated near-black and a fully saturated near-white both look
+   wrong and no palette system uses one.
+
+   Seed: royal navy at hue 258, antique gold at hue 72 for tertiary, red at hue 27 for
+   error. Navy and gold is the classic royal pair, and "subtle" is the load-bearing word
+   here: the primary sits at chroma 0.072, not the 0.20 that a SaaS indigo wants. Royal
+   is deep and muted — high chroma at a mid tone is just a bright blue, which is what was
+   wrong with it.
+
+   The neutral family carries the primary hue at almost no chroma, which is what makes the
+   greys read as belonging to something instead of as grey.
+
+   Every value here is solid. No alpha, no `transparent`, no colour-mix against a
+   transparent — a translucent surface is a different colour against every background
+   it lands on, and that is how a palette stops being a palette.
+--------------------------------------------------------------------------- */
+@theme {
+  /* Chroma by tone. Material's curve: quiet at the ends, loud in the middle. */
+  --m3-c-0: 0.004;
+  --m3-c-10: 0.012;
+  --m3-c-20: 0.028;
+  --m3-c-30: 0.058;
+  --m3-c-40: 0.099;
+  --m3-c-50: 0.148;
+  --m3-c-60: 0.194;
+  --m3-c-70: 0.203;
+  --m3-c-80: 0.182;
+  --m3-c-90: 0.125;
+  --m3-c-95: 0.085;
+  --m3-c-99: 0.028;
+}
+
+
+/* ---------------------------------------------------------------------------
+   Themes.
+
+   A theme is six numbers: the primary hue and chroma, the accent hue and chroma, and the
+   error hue and chroma. Everything else — forty roles across two schemes — is derived
+   above. That is why these are six lines each and cannot drift out of step with each
+   other: there is nothing to keep in sync.
+
+   Hues are chosen to be told apart at a glance, not to be a colour wheel. Two of them
+   can sit near the neutral axis, but they have to be separated by enough to see — Slate
+   at Royal's chroma was Royal, and a theme you cannot tell from the next one is not a
+   theme. Which is also why each carries its own accent: the pair is what you judge a
+   palette by, not the primary alone.
+--------------------------------------------------------------------------- */
+[data-theme="royal"] { --seed-h: 258; --seed-c: 0.072; --seed-gh: 72; --seed-gc: 0.058; }
+[data-theme="oxblood"] { --seed-h: 15;  --seed-c: 0.088; --seed-gh: 78; --seed-gc: 0.062; }
+[data-theme="forest"]  { --seed-h: 152; --seed-c: 0.068; --seed-gh: 66; --seed-gc: 0.066; }
+[data-theme="slate"]   { --seed-h: 250; --seed-c: 0.014; --seed-gh: 55; --seed-gc: 0.048; }
+[data-theme="plum"]    { --seed-h: 330; --seed-c: 0.078; --seed-gh: 74; --seed-gc: 0.060; }
+[data-theme="clay"]    { --seed-h: 42;  --seed-c: 0.082; --seed-gh: 190; --seed-gc: 0.070; }
+
+/* A swatch for the picker: the two colours you actually judge a theme by. */
+@utility t-swatch {
+  &::before {
+    background: linear-gradient(
+      135deg,
+      oklch(0.47 calc(var(--seed-c)) var(--seed-h)),
+      oklch(0.47 calc(var(--seed-gc)) var(--seed-gh))
+    );
+  }
+}
+
+/* --- Light --- */
+:root {
+  /* THE SEED. Every role below is derived from these six numbers, which is the difference
+     between one palette and a set of them: a theme now costs six lines instead of forty,
+     and a second theme cannot drift away from the first in twelve places. */
+  --seed-h: 258;  --seed-c: 0.072;
+  --seed-gh: 72;  --seed-gc: 0.058;
+  --seed-eh: 27;  --seed-ec: 0.19;
+
+  /* Realtime health. Sits between tertiary and error on purpose: the stream reconnects on
+     its own, so a non-problem should not spend the day in the same red as a failed
+     delete. "Connecting" and "offline" fall back to error, which is correct then. */
+  --live: oklch(0.47 calc(var(--seed-gc) * 1.4) var(--seed-gh));
+  --live-surface: oklch(0.94 calc(var(--seed-gc) * 0.5) var(--seed-gh));
+  --live-border: oklch(0.84 calc(var(--seed-gc) * 0.8) var(--seed-gh));
+}
+
+:root {
+  /* Primary — indigo, hue 264 */
+  --primary: oklch(0.40 calc(var(--seed-c) * 1) var(--seed-h));
+  --primary-foreground: oklch(0.97 calc(var(--seed-c) * .11) var(--seed-h));
+  --primary-container: oklch(0.93 calc(var(--seed-c) * .42) var(--seed-h));
+  --primary-foreground-container: oklch(0.30 calc(var(--seed-c) * .42) var(--seed-h));
+
+  /* Secondary — the same hue, quiet. M3's secondary is a desaturated primary. */
+  --secondary: oklch(0.47 calc(var(--seed-c) * 1) var(--seed-h));
+  --secondary-foreground: oklch(0.97 calc(var(--seed-c) * .11) var(--seed-h));
+  --secondary-container: oklch(0.94 calc(var(--seed-c) * .42) var(--seed-h));
+  --secondary-foreground-container: oklch(0.33 calc(var(--seed-c) * .86) var(--seed-h));
+
+  /* Tertiary — teal, hue 195. This is where the accent lives. */
+  --tertiary: oklch(0.47 calc(var(--seed-gc) * 1) var(--seed-gh));
+  --tertiary-foreground: oklch(0.97 calc(var(--seed-gc) * .11) var(--seed-gh));
+  --tertiary-container: oklch(0.93 calc(var(--seed-gc) * .42) var(--seed-gh));
+  --tertiary-foreground-container: oklch(0.30 calc(var(--seed-gc) * .42) var(--seed-gh));
+
+  /* Error — red, hue 27 */
+  --destructive: oklch(0.53 calc(var(--seed-ec) * 0.5) var(--seed-eh));
+  --destructive-foreground: oklch(0.99 calc(var(--seed-ec) * 0) var(--seed-eh));
+  --destructive-container: oklch(0.91 calc(var(--seed-ec) * .42) var(--seed-eh));
+  --destructive-foreground-container: oklch(0.32 calc(var(--seed-ec) * .85) var(--seed-eh));
+
+  /* Neutral — the primary hue at almost no chroma. Warm, not grey. */
+  --background: oklch(0.985 calc(var(--seed-c) * .08) var(--seed-h));
+  --foreground: oklch(0.21 calc(var(--seed-c) * .35) var(--seed-h));
+  --muted: oklch(0.945 calc(var(--seed-c) * .22) var(--seed-h));
+  --muted-foreground: oklch(0.49 calc(var(--seed-c) * .35) var(--seed-h));
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 calc(var(--seed-c) * .35) var(--seed-h));
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 calc(var(--seed-c) * .35) var(--seed-h));
+  --border: oklch(0.87 calc(var(--seed-c) * .20) var(--seed-h));
+  --input: oklch(0.85 calc(var(--seed-c) * .24) var(--seed-h));
+  --ring: oklch(0.49 calc(var(--seed-c) * .35) var(--seed-h));
+  --sidebar: oklch(0.975 calc(var(--seed-c) * .11) var(--seed-h));
+  --sidebar-foreground: oklch(0.21 calc(var(--seed-c) * .35) var(--seed-h));
+  --sidebar-accent: var(--primary-container);
+  --sidebar-accent-foreground: var(--primary-foreground-container);
+  --sidebar-border: oklch(0.87 calc(var(--seed-c) * .20) var(--seed-h));
+  --accent: oklch(0.91 calc(var(--seed-c) * .42) var(--seed-h));
+  --accent-foreground: oklch(0.3 calc(var(--seed-c) * 0.5) var(--seed-h));
+
+  /* M3's five surface-container steps. Menus, dialogs and sheets are built from
+     these, not from one flat "popover" colour doing five jobs. */
+  --m3-surface-container-lowest: oklch(1 0 0);
+  --m3-surface-container-low: oklch(0.975 calc(var(--seed-c) * .11) var(--seed-h));
+  --m3-surface-container: oklch(0.955 calc(var(--seed-c) * .19) var(--seed-h));
+  --m3-surface-container-high: oklch(0.935 calc(var(--seed-c) * .24) var(--seed-h));
+  --m3-surface-container-highest: oklch(0.915 calc(var(--seed-c) * .28) var(--seed-h));
+
+  --shadow: oklch(0.21 calc(var(--seed-c) * .35) var(--seed-h));
+  --scrim: oklch(0.21 calc(var(--seed-c) * .35) var(--seed-h));
+}
+
+/* --- Dark ----------------------------------------------------------------- */
+.dark {
+  /* Tones invert: primary goes to 80, on-primary to 20, and the container pair
+     swaps sides. The hue never changes — only the tone does. */
+  --primary: oklch(0.72 calc(var(--seed-c) * .86) var(--seed-h));
+  --primary-foreground: oklch(0.24 calc(var(--seed-c) * .62) var(--seed-h));
+  --primary-container: oklch(0.32 calc(var(--seed-c) * .85) var(--seed-h));
+  --primary-foreground-container: oklch(0.90 calc(var(--seed-c) * .42) var(--seed-h));
+
+  --secondary: oklch(0.66 calc(var(--seed-c) * .79) var(--seed-h));
+  --secondary-foreground: oklch(0.24 calc(var(--seed-c) * .62) var(--seed-h));
+  --secondary-container: oklch(0.30 calc(var(--seed-c) * .42) var(--seed-h));
+  --secondary-foreground-container: oklch(0.93 calc(var(--seed-c) * .42) var(--seed-h));
+
+  --tertiary: oklch(0.74 calc(var(--seed-gc) * .90) var(--seed-gh));
+  --tertiary-foreground: oklch(0.24 calc(var(--seed-gc) * .62) var(--seed-gh));
+  --tertiary-container: oklch(0.32 calc(var(--seed-gc) * .85) var(--seed-gh));
+  --tertiary-foreground-container: oklch(0.92 calc(var(--seed-gc) * .45) var(--seed-gh));
+
+  --destructive: oklch(0.71 calc(var(--seed-ec) * 0.5) var(--seed-eh));
+  --destructive-foreground: oklch(0.26 calc(var(--seed-ec) * .37) var(--seed-eh));
+  --destructive-container: oklch(0.4 calc(var(--seed-ec) * .43) var(--seed-eh));
+  --destructive-foreground-container: oklch(0.91 calc(var(--seed-ec) * .42) var(--seed-eh));
+
+  --background: oklch(0.17 calc(var(--seed-c) * .21) var(--seed-h));
+  --foreground: oklch(0.92 calc(var(--seed-c) * .45) var(--seed-h));
+  --muted: oklch(0.27 calc(var(--seed-c) * .34) var(--seed-h));
+  --muted-foreground: oklch(0.72 calc(var(--seed-c) * .86) var(--seed-h));
+  --popover: oklch(0.22 calc(var(--seed-c) * .32) var(--seed-h));
+  --popover-foreground: oklch(0.92 calc(var(--seed-c) * .45) var(--seed-h));
+  --card: oklch(0.22 calc(var(--seed-c) * .32) var(--seed-h));
+  --card-foreground: oklch(0.92 calc(var(--seed-c) * .45) var(--seed-h));
+  --border: oklch(0.36 calc(var(--seed-c) * .39) var(--seed-h));
+  --input: oklch(0.4 calc(var(--seed-c) * .43) var(--seed-h));
+  --ring: oklch(0.79 calc(var(--seed-c) * 0.5) var(--seed-h));
+  --sidebar: oklch(0.19 calc(var(--seed-c) * .28) var(--seed-h));
+  --sidebar-foreground: oklch(0.92 calc(var(--seed-c) * .45) var(--seed-h));
+  --sidebar-accent: var(--primary-container);
+  --sidebar-accent-foreground: var(--primary-foreground-container);
+  --sidebar-border: oklch(0.33 calc(var(--seed-c) * .86) var(--seed-h));
+  --accent: oklch(0.34 calc(var(--seed-c) * 0.5) var(--seed-h));
+  --accent-foreground: oklch(0.92 calc(var(--seed-c) * .45) var(--seed-h));
+
+  --m3-surface-container-lowest: oklch(0.13 calc(var(--seed-c) * .16) var(--seed-h));
+  --m3-surface-container-low: oklch(0.19 calc(var(--seed-c) * .28) var(--seed-h));
+  --m3-surface-container: oklch(0.22 calc(var(--seed-c) * .32) var(--seed-h));
+  --m3-surface-container-high: oklch(0.26 calc(var(--seed-c) * .37) var(--seed-h));
+  --m3-surface-container-highest: oklch(0.3 calc(var(--seed-c) * 0.5) var(--seed-h));
+
+  --live: oklch(0.78 calc(var(--seed-gc) * 1.5) var(--seed-gh));
+  --live-surface: oklch(0.32 calc(var(--seed-gc) * 0.9) var(--seed-gh));
+  --live-border: oklch(0.44 calc(var(--seed-gc) * 1.1) var(--seed-gh));
+
+  --shadow: oklch(0 0 0);
+  --scrim: oklch(0 0 0);
 }
 
 @media (prefers-reduced-motion: reduce) {

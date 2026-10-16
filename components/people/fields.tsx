@@ -117,10 +117,17 @@ export function formatDate(value: string) {
 }
 
 const STAGE_TONE: Record<string, string> = {
-  new: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  contacted: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
-  qualified: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  customer: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  // Solid, from the palette. These were `bg-<colour>-500/10` over white, which is a
+  // 10% wash: a different colour against every surface the badge lands on, and roughly
+  // 3% of luminance, so the stage was hard to read at all. A badge names a role now.
+  new:
+    "bg-[oklch(0.92_0.038_205)] text-[oklch(0.32_0.052_205)] dark:bg-[oklch(0.4_0.038_205)] dark:text-[oklch(0.9_0.038_205)]",
+  contacted:
+    "bg-[oklch(0.92_0.038_340)] text-[oklch(0.32_0.052_340)] dark:bg-[oklch(0.4_0.038_340)] dark:text-[oklch(0.9_0.038_340)]",
+  qualified:
+    "bg-[oklch(0.92_0.038_72)] text-[oklch(0.32_0.052_72)] dark:bg-[oklch(0.4_0.038_72)] dark:text-[oklch(0.9_0.038_72)]",
+  customer:
+    "bg-[oklch(0.92_0.038_145)] text-[oklch(0.32_0.052_145)] dark:bg-[oklch(0.4_0.038_145)] dark:text-[oklch(0.9_0.038_145)]",
   disqualified: "bg-muted text-muted-foreground",
 }
 

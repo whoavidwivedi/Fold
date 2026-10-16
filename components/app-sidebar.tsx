@@ -21,6 +21,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "cn"
+import { ThemePicker } from "@/components/theme-picker"
 
 const NAV = [
   { href: "/people", label: "Leads" },
@@ -64,6 +65,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             {/* The account menu lives in the top row at every width. It used to sit at the
                 bottom of the sidebar behind `hidden md:block`, which left a phone user
                 with no way to sign out at all. */}
+            {/* Palette, then the account. Both are per-account settings, so they sit
+                together rather than scattering one into the nav. */}
+            <ThemePicker />
             <AccountMenu name={identity?.name} email={identity?.email} />
           </div>
         </div>
@@ -84,11 +88,22 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground shrink-0 rounded-md px-2.5 py-1.5 text-sm",
+                  // Hover is a Material 3 state layer — currentColor at 0.08 — and nothing
+                  // else. They were once the same fill as the active item, which meant
+                  // hovering "Companies" while on "Leads" made Companies look exactly like
+                  // Leads. Active keeps its own fill and gutter bar.
+                  "t-state-layer t-state-hover shrink-0 rounded-md px-2.5 py-1.5 text-sm",
+                  "text-muted-foreground",
                   // Nothing in a list gets an entrance animation. See AGENTS.md: this is
                   // navigated dozens of times a session.
                   "transition-colors duration-150",
-                  active && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+                  "focus-visible:ring-ring/60 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none",
+                  active && [
+                    "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+                    // A bar in the gutter, from md up. On a vertical nav this is the
+                    // unmistakable tell; the fill alone is only a shade apart.
+                    "md:relative md:before:absolute md:before:inset-y-1.5 md:before:left-[-0.5rem] md:before:w-0.5 md:before:rounded-full md:before:bg-sidebar-accent-foreground md:before:content-['']",
+                  ],
                 )}
               >
                 {item.label}
@@ -168,8 +183,12 @@ function RealtimeIndicator({
 }) {
   if (status === "live") {
     return (
-      <Badge variant="secondary" className="gap-1.5">
-        <span className="size-1.5 rounded-full bg-emerald-500" />
+      // Not a status colour. `emerald-500` was a Tailwind literal living outside the
+      // palette, so the one dot that reports health was the one colour on screen that no
+      // theme could change. It now names a role, and the role is tertiary — "this works",
+      // not "this is an error", which is what a red dot implies.
+      <Badge variant="live" className="gap-1.5">
+        <span className="size-2 rounded-full bg-[var(--live)]" />
         Live
       </Badge>
     )

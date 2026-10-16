@@ -160,7 +160,7 @@ export function PeopleTable() {
         cell: ({ getValue }) => {
           const email = getValue() as string | undefined
           return (
-            <span className="text-muted-foreground block truncate text-sm">
+            <span className="text-muted-foreground t-type-body-medium block truncate">
               {email ?? "—"}
             </span>
           )
@@ -175,7 +175,7 @@ export function PeopleTable() {
         accessorKey: "source",
         header: "Source",
         cell: ({ getValue }) => (
-          <span className="text-muted-foreground block truncate text-sm">
+          <span className="text-muted-foreground t-type-body-medium block truncate">
             {(getValue() as string | undefined) ?? "—"}
           </span>
         ),
@@ -239,8 +239,8 @@ export function PeopleTable() {
   return (
     <div className="flex h-full flex-col gap-4 p-4 md:p-6">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight">Leads</h1>
-        <p className="text-muted-foreground text-sm">
+        <h1 className="t-type-headline-small">Leads</h1>
+        <p className="text-muted-foreground t-type-body-small">
           {query.isPending
             ? "Loading…"
             : `${query.data?.total ?? 0} in this workspace`}
@@ -303,7 +303,7 @@ export function PeopleTable() {
         <div className="grid flex-1 place-items-center rounded-lg border">
           <div className="space-y-1 text-center">
             <p className="font-medium">No leads yet</p>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground t-type-body-small">
               {search || stage
                 ? "Nothing matches those filters."
                 : "Your first lead will show up here."}
@@ -388,7 +388,7 @@ export function PeopleTable() {
           is genuinely a second page. */}
       {(pageIndex > 0 || query.data?.nextCursor) && (
         <div className="flex shrink-0 items-center justify-between">
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground t-type-body-small">
             Page {pageIndex + 1}
             {query.data?.total != null &&
               ` · showing ${people.length} of ${query.data.total}`}

@@ -92,7 +92,7 @@ export function WorkspaceSwitcher() {
         render={
           <button
             type="button"
-            className="hover:bg-sidebar-accent flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors"
+            className="hover:bg-sidebar-accent flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-sidebar focus-visible:ring-offset-2 focus-visible:outline-none"
             aria-label="Switch workspace"
           >
             <RiExchangeLine className="shrink-0" aria-hidden />

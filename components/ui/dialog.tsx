@@ -31,7 +31,7 @@ function DialogOverlay({
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 isolate z-50 bg-border duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className
       )}
       {...props}
@@ -62,7 +62,13 @@ function DialogContent({
           // The whole dialog scrolls rather than only its body. A sticky footer would be
           // nicer, but it costs a second scroll container and a shadow, and the footer is
           // one scroll away.
-          "fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100svh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // md-comp-dialog: corner-extra-large is 28px. A 12px dialog is a different
+          // component, and the ring goes: M3 separates a dialog by elevation, not a
+          // hairline. Motion is 300ms emphasized-decelerate in, 250ms
+          // emphasized-accelerate out — decelerate arrives, accelerate leaves, and
+          // getting that backwards is why dialogs feel like they slam shut.
+          "fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100svh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-[length:var(--m3-shape-xl)] bg-[var(--m3-surface-container-high)] p-6 text-sm text-popover-foreground shadow-[0_2px_6px_-1px_var(--shadow),0_8px_24px_-6px_var(--shadow)] outline-none sm:max-w-lg data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-open:duration-[length:var(--m3-duration-medium2)] data-open:ease-[var(--m3-easing-emphasized-decelerate)]",
+          "data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-closed:duration-[length:var(--m3-duration-medium1)] data-closed:ease-[var(--m3-easing-emphasized-accelerate)]",
           className
         )}
         {...props}
@@ -111,7 +117,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end",
+        "bg-muted/50 -mx-6 -mb-6 flex flex-col-reverse gap-2 rounded-b-[length:var(--m3-shape-xl)] border-t p-4 sm:flex-row sm:justify-end",
         className
       )}
       {...props}
