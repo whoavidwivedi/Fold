@@ -38,7 +38,14 @@ async function signUp(page: Page) {
     })
     expect(res.ok()).toBeTruthy()
   }
-  await page.waitForTimeout(1000)
+  // Wait for the row, not for the clock. This is the first test in the file, so it is
+  // also the first to touch a freshly started server, where the initial render plus
+  // hydration can outlast any fixed sleep. In CI that is the difference between a green
+  // run and a 30s timeout on boundingBox, with every later test passing — which reads as
+  // a flake rather than a harness that was guessing.
+  await expect(
+    page.getByRole("link", { name: `Alpha Row`, exact: true }),
+  ).toBeVisible()
   return stamp
 }
 
