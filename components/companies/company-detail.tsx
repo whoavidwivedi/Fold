@@ -34,9 +34,11 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { CompanyFormFields } from "@/components/companies/company-form"
 import {
+  RecordCards,
   RecordTable,
   TableCell,
   TableRow,
+  cardLinkClass,
   cellClass,
   clickableRowClass,
   gridRow,
@@ -124,9 +126,14 @@ export function CompanyDetail({ companyId }: { companyId: string }) {
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-4 md:max-w-3xl md:p-6">
-      <header className="flex items-start justify-between gap-4">
+      {/* Stacked below sm: side by side, the actions took a third of a 390px screen and
+          left the name a two-line sliver beside them. */}
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
-          <h1 className="truncate text-xl font-semibold tracking-tight">
+          {/* Wraps, never truncates. This heading is the whole reason the page
+              exists; "Maximiliana Feathers…" is the one string that must not be
+              shortened. A long unbroken email still needs breaking. */}
+          <h1 className="text-xl font-semibold break-words tracking-tight">
             {data ? data.name : <Skeleton className="h-6 w-48" />}
           </h1>
           {data && <CompanyFacts company={data} />}
@@ -170,6 +177,7 @@ export function CompanyDetail({ companyId }: { companyId: string }) {
             </EmptyHeader>
           </Empty>
         ) : (
+          <>
           <RecordTable
             columns={CONTACT_COLUMNS}
             minWidth={CONTACTS_MIN_WIDTH}
@@ -178,7 +186,6 @@ export function CompanyDetail({ companyId }: { companyId: string }) {
               { label: "Email" },
               { label: "Stage" },
             ]}
-            className="rounded-lg border"
           >
             {(contacts.data?.items ?? []).map((person) => (
               // gridRow gives it the header's template; without it the cells stack and
@@ -208,6 +215,28 @@ export function CompanyDetail({ companyId }: { companyId: string }) {
               </TableRow>
             ))}
           </RecordTable>
+
+          {/* The same contacts as cards on a phone. Without these the table rendered
+              unguarded and cut the email column off at the viewport edge. */}
+          <RecordCards items={contacts.data?.items ?? []}>
+            {(person) => (
+              <Link href={`/people/${person.id}`} className={cardLinkClass()}>
+                <span className="flex items-baseline justify-between gap-2">
+                  <span className="truncate font-medium">
+                    {[person.firstName, person.lastName].filter(Boolean).join(" ") ||
+                      "Unnamed"}
+                  </span>
+                  <StageBadge stage={person.lifecycleStage} />
+                </span>
+                {person.email && (
+                  <span className="text-muted-foreground truncate text-sm">
+                    {person.email}
+                  </span>
+                )}
+              </Link>
+            )}
+          </RecordCards>
+          </>
         )}
       </section>
     </div>

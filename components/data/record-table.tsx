@@ -29,6 +29,18 @@ import {
  * Virtualization is the caller's business — the leads list needs it and the companies
  * list does not — so the body is a slot and the rows are the caller's rows, styled with
  * `gridRow`.
+ *
+ * The table is unconditionally hidden below `lg`, and it used to be each caller's job to
+ * remember that — a job that fails silently, since a company's contact table rendered
+ * this without the guard and cropped half its columns off the right edge of a phone with
+ * no error anywhere. The narrow layout is a different component, `RecordCards`, and this
+ * one owns the breakpoint so it cannot be forgotten.
+ *
+ * `lg`, not `md`, because `lg` is the first width where the table actually fits. The
+ * sidebar takes 240px, so at 768px a tablet leaves a 528px pane — and the leads table
+ * needs 760. It scrolled, which is not a crop but does read like one: the last three
+ * columns simply were not there. At 1024px the pane is 784px and every table in the app
+ * fits without scrolling, so the rule is "show the table only where there is room for it".
  */
 export function RecordTable({
   columns,
@@ -61,7 +73,7 @@ export function RecordTable({
   children: React.ReactNode
 }) {
   return (
-    <div className={cn("min-h-0 overflow-hidden rounded-lg border", className)}>
+    <div className={cn("hidden min-h-0 overflow-hidden rounded-lg border lg:block", className)}>
       <div ref={scrollRef} className="h-full overflow-auto">
         <Table style={{ display: "grid", minWidth }} className="w-full">
           <TableHeader className="bg-background sticky top-0 z-10 grid">
@@ -95,6 +107,41 @@ export function RecordTable({
 /** The style a body row must carry to line up with the header. */
 export function gridRow(columns: string) {
   return { gridTemplateColumns: columns }
+}
+
+/**
+ * The same records as cards, below md.
+ *
+ * A record table cannot shrink into a phone, so every list needs a second shape. This is
+ * it, in one place, because it had already been written out twice by hand and the third
+ * caller did not copy it.
+ *
+ * Each caller supplies only what goes *inside* a card. The frame, the spacing and the
+ * whole-card link target belong here so two lists cannot disagree about them.
+ */
+export function RecordCards<T extends { id: string }>({
+  items,
+  children,
+}: {
+  items: readonly T[]
+  children: (item: T) => React.ReactNode
+}) {
+  return (
+    <ul className="flex flex-col gap-2 lg:hidden">
+      {items.map((item) => (
+        <li key={item.id}>{children(item)}</li>
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * The link that fills a card, so one tap anywhere on it opens the record — the card
+ * equivalent of the stretched link, and for the same reason: the name is the link, and
+ * the target is bigger than the name.
+ */
+export function cardLinkClass() {
+  return "hover:bg-muted/50 flex w-full flex-col gap-1 rounded-lg border p-3 text-left transition-colors"
 }
 
 /** The class a body row must carry. Absolute for virtualized lists. */

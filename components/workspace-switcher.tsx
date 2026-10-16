@@ -106,7 +106,10 @@ export function WorkspaceSwitcher() {
         }
       />
 
-      <DropdownMenuContent align="start" className="w-56">
+      {/* No width class. DropdownMenuContent already sizes itself to the anchor, and
+          overriding that with a fixed w-56 is what made this menu a narrow box floating
+          under a full-width trigger on a phone. */}
+      <DropdownMenuContent align="start">
         {/* Base UI: MenuGroupLabel throws without an enclosing Menu.Group. */}
         <DropdownMenuGroup>
           <DropdownMenuLabel>Workspaces</DropdownMenuLabel>

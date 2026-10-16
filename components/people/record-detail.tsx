@@ -171,9 +171,14 @@ export function RecordDetail({ personId }: { personId: string }) {
     // drawer was 40% wide for free, and the page has to choose it deliberately.
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-4 md:max-w-3xl md:p-6">
       <header className="flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-4">
+        {/* Stacked below sm: side by side, the actions took a third of a 390px screen and
+            left the name a truncated sliver. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
-            <h1 className="truncate text-xl font-semibold tracking-tight">
+            {/* Wraps, never truncates. This heading is the whole reason the page
+              exists; "Maximiliana Feathers…" is the one string that must not be
+              shortened. A long unbroken email still needs breaking. */}
+          <h1 className="text-xl font-semibold break-words tracking-tight">
               {person.data ? fullName(person.data) : <Skeleton className="h-6 w-48" />}
             </h1>
             {person.data && (

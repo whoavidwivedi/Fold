@@ -14,7 +14,7 @@ export default async function CompanyPage({
   const { id } = await params
 
   return (
-    <main className="h-svh overflow-hidden">
+    <main className="h-full overflow-hidden">
       <CompanyDetail companyId={id} />
     </main>
   )

@@ -193,7 +193,9 @@ export function NewRecordTrigger({
   onClick: () => void
 }) {
   return (
-    <Button type="button" onClick={onClick}>
+    // h-11 below md. This is the one control every mobile session starts with, and the
+    // default h-8 is a 32px target.
+    <Button type="button" onClick={onClick} className="max-md:h-11 max-md:px-4">
       {icon}
       {label}
     </Button>

@@ -53,7 +53,16 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // max-h + overflow-y are load-bearing on a phone. The edit form is ~735px tall
+          // and a 390x780 screen with the on-screen keyboard up leaves roughly 300px of
+          // it. Without a ceiling the popup grew past the viewport, centred on it, so the
+          // Save button sat off-screen and there was no scroll to reach it — the form
+          // could not be submitted at all.
+          //
+          // The whole dialog scrolls rather than only its body. A sticky footer would be
+          // nicer, but it costs a second scroll container and a shadow, and the footer is
+          // one scroll away.
+          "fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100svh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}
