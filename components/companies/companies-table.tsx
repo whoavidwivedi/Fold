@@ -1,31 +1,16 @@
 "use client"
 
+import Link from "next/link"
 import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { RiAddLine } from "@remixicon/react"
 
-import {
-  createCompany,
-  deleteCompany,
-  listCompanies,
-  updateCompany,
-} from "@/lib/api/generated/endpoints/companies/companies"
-import type { Company } from "@/lib/api/generated/model"
+import { createCompany, listCompanies } from "@/lib/api/generated/endpoints/companies/companies"
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { cn } from "cn"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Spinner } from "@/components/ui/spinner"
 import { CompanyFormFields } from "@/components/companies/company-form"
 import {
   RecordTable,
@@ -42,7 +27,6 @@ import {
   RecordDialog,
   isSubmittable,
   newBody,
-  updateBody,
   type Draft,
 } from "@/components/forms/record-form"
 
@@ -79,8 +63,6 @@ export function CompaniesTable() {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [createDraft, setCreateDraft] = useState<Draft>(EMPTY)
-  const [editing, setEditing] = useState<Company | null>(null)
-
   const query = useQuery({
     queryKey: ["companies", { search: debouncedSearch }],
     queryFn: async () => {
@@ -104,29 +86,6 @@ export function CompaniesTable() {
       // Closed on success, not on click, so a failed save keeps what was typed.
       setCreateOpen(false)
       setCreateDraft(EMPTY)
-    },
-  })
-
-  const update = useMutation({
-    mutationFn: ({ id, draft }: { id: string; draft: Draft }) =>
-      updateCompany(id, updateBody(draft, REQUIRED)),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["companies"] })
-      // The lead list shows a contacts count per company row, so it moves too.
-      await queryClient.invalidateQueries({ queryKey: ["people"] })
-      setEditing(null)
-    },
-  })
-
-  const remove = useMutation({
-    mutationFn: (id: string) => deleteCompany(id),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["companies"] })
-      await queryClient.invalidateQueries({ queryKey: ["people"] })
-      // Cancel, save and delete all close the dialog the same way. Leaving it open after
-      // a delete is the bug the lead drawer had: a modal sitting on top of the list you
-      // are trying to check.
-      setEditing(null)
     },
   })
 
@@ -217,19 +176,14 @@ export function CompaniesTable() {
               key={company.id}
               className={cn(rowClass(), clickableRowClass(false))}
               style={gridRow(COLUMN_WIDTHS)}
-              onClick={() => setEditing(company)}
             >
               <TableCell className={cellClass()}>
                 {/* A <tr> is not a control. role="button" here would erase the row from
                     screen-reader table navigation, so the name is the button and the row
                     handler is the pointer shortcut beside it. */}
-                <button
-                  type="button"
-                  onClick={() => setEditing(company)}
-                  className={nameButtonClass()}
-                >
+                <Link href={`/companies/${company.id}`} className={nameButtonClass()}>
                   {company.name}
-                </button>
+                </Link>
               </TableCell>
               <TableCell className={cellClass()}>
                 <span className="text-muted-foreground block truncate text-sm">
@@ -260,9 +214,8 @@ export function CompaniesTable() {
           {companies.map((company) => (
             <li key={company.id}>
               {/* Spans, not divs: a button's content model is phrasing content only. */}
-              <button
-                type="button"
-                onClick={() => setEditing(company)}
+              <Link
+                href={`/companies/${company.id}`}
                 className="hover:bg-muted/50 flex w-full flex-col gap-1 p-3 text-left transition-colors"
               >
                 <span className="flex items-baseline justify-between gap-2">
@@ -282,131 +235,13 @@ export function CompaniesTable() {
                     {[company.industry, company.location].filter(Boolean).join(" · ")}
                   </span>
                 )}
-              </button>
+              </Link>
             </li>
           ))}
         </ul>
         </>
       )}
 
-      {editing && (
-        <EditCompanyDialog
-          key={editing.id}
-          company={editing}
-          pending={update.isPending}
-          deleting={remove.isPending}
-          error={update.isError}
-          onSave={(draft) => update.mutateAsync({ id: editing.id, draft })}
-          onDelete={() => remove.mutate(editing.id)}
-          onClose={() => setEditing(null)}
-        />
-      )}
     </div>
-  )
-}
-
-/**
- * Edit or delete one company.
- *
- * The clearing rules are the ones in components/forms/record-form: a blank field is sent
- * as "" and the SQL's NULLIF turns that into a real NULL, so emptying a domain removes it
- * rather than storing an empty string that renders as a blank link.
- */
-function EditCompanyDialog({
-  company,
-  pending,
-  deleting,
-  error,
-  onSave,
-  onDelete,
-  onClose,
-}: {
-  company: Company
-  pending: boolean
-  deleting: boolean
-  error: boolean
-  onSave: (draft: Draft) => Promise<unknown>
-  onDelete: () => void
-  onClose: () => void
-}) {
-  const [draft, setDraft] = useState<Draft>({
-    name: company.name,
-    domain: company.domain ?? "",
-    industry: company.industry ?? "",
-    size: company.size ?? "",
-    location: company.location ?? "",
-  })
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
-  const [failed, setFailed] = useState(false)
-
-  const contacts = company.peopleCount ?? 0
-
-  if (confirmingDelete) {
-    return (
-      <Dialog open onOpenChange={(next) => !next && onClose()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete {company.name}?</DialogTitle>
-            <DialogDescription>
-              {contacts
-                ? `${contacts} ${contacts === 1 ? "lead is" : "leads are"} linked here and will be kept — they simply stop belonging to this company. Nothing is destroyed.`
-                : "This hides the company from the workspace. Nothing is destroyed."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter className="mt-4">
-            <Button
-              variant="outline"
-              onClick={() => setConfirmingDelete(false)}
-              disabled={deleting}
-            >
-              Cancel
-            </Button>
-            <Button variant="destructive" disabled={deleting} onClick={onDelete}>
-              {deleting && <Spinner data-icon="inline-start" />}
-              {deleting ? "Deleting…" : "Delete company"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    )
-  }
-
-  return (
-    <RecordDialog
-      open
-      onOpenChange={(next) => !next && onClose()}
-      title={`Edit ${company.name}`}
-      description="Clearing a field removes it rather than leaving it blank."
-      fields={
-        <CompanyFormFields
-          draft={draft}
-          onChange={setDraft}
-          idPrefix={`edit-${company.id}`}
-        />
-      }
-      submitLabel="Save changes"
-      pending={pending}
-      error={error || failed}
-      canSubmit={isSubmittable(draft, REQUIRED)}
-      onSubmit={async () => {
-        setFailed(false)
-        try {
-          await onSave(draft)
-        } catch {
-          setFailed(true)
-        }
-      }}
-      footerAction={
-        <Button
-          variant="destructive"
-          type="button"
-          className="mr-auto"
-          onClick={() => setConfirmingDelete(true)}
-        >
-          Delete
-        </Button>
-      }
-    />
   )
 }

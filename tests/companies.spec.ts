@@ -216,17 +216,20 @@ test.describe("company form invariants", () => {
 
     await page.getByRole("link", { name: "Companies" }).click()
     await page.waitForURL("**/companies")
-    await page.getByRole("cell", { name: "Northside Roofing", exact: true }).click()
+    await page.getByRole("link", { name: "Northside Roofing", exact: true }).click()
+    await page.waitForURL(/\/companies\/[0-9a-f-]{36}$/)
 
+    await page.getByRole("button", { name: "Edit" }).click()
     const dialog = page.getByRole("dialog")
     await dialog.getByLabel("Name").fill("Northside Roofing Co")
     await dialog.getByLabel("Industry").fill("Contracting")
     await dialog.getByRole("button", { name: /save changes/i }).click()
 
+    // The record page stays put and updates in place — no list to go back and forth to.
     await expect(
-      page.getByRole("cell", { name: "Northside Roofing Co", exact: true }),
+      page.getByRole("heading", { level: 1, name: "Northside Roofing Co" }),
     ).toBeVisible()
-    await expect(page.getByRole("cell", { name: "Contracting", exact: true })).toBeVisible()
+    await expect(page.getByText("Contracting")).toBeVisible()
     void id
   })
 
@@ -236,8 +239,10 @@ test.describe("company form invariants", () => {
 
     await page.getByRole("link", { name: "Companies" }).click()
     await page.waitForURL("**/companies")
-    await page.getByRole("cell", { name: "Target Co", exact: true }).click()
+    await page.getByRole("link", { name: "Target Co", exact: true }).click()
+    await page.waitForURL(/\/companies\/[0-9a-f-]{36}$/)
 
+    await page.getByRole("button", { name: "Edit" }).click()
     const dialog = page.getByRole("dialog")
     await expect(dialog.getByLabel("Domain")).toHaveValue("target.test")
     await dialog.getByLabel("Domain").fill("")
@@ -271,17 +276,18 @@ test.describe("company form invariants", () => {
 
     await page.getByRole("link", { name: "Companies" }).click()
     await page.waitForURL("**/companies")
-    await page.getByRole("cell", { name: "Doomed Ltd", exact: true }).click()
+    await page.getByRole("link", { name: "Doomed Ltd", exact: true }).click()
+    await page.waitForURL(/\/companies\/[0-9a-f-]{36}$/)
 
-    const dialog = page.getByRole("dialog")
-    await dialog.getByRole("button", { name: /^delete$/i }).click()
+    // Delete is on the record itself, not behind Edit.
+    await page.getByRole("button", { name: "Delete" }).click()
 
     // The confirm names the cost, because deleting a company unlinks its leads.
     await expect(page.getByText(/1 lead is linked/)).toBeVisible()
-    await dialog.getByRole("button", { name: /delete company/i }).click()
+    await page.getByRole("button", { name: /delete company/i }).click()
 
-    // The dialog must close, or it sits on top of the list the user is checking.
-    await expect(page.getByRole("dialog")).toHaveCount(0)
+    // A deleted company has no page left to show, so it goes back to the list.
+    await page.waitForURL("**/companies")
     await expect(page.getByRole("cell", { name: "Doomed Ltd", exact: true })).toHaveCount(0)
 
     const list = await (
