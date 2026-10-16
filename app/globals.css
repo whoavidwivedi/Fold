@@ -123,8 +123,22 @@
   body {
     @apply bg-background text-foreground;
     }
-  button:not(:disabled), [role="button"]:not(:disabled) {
+  /* Anything you can click should say so with the cursor.
+     Anchors were missing, which made a link styled as a record name look like plain
+     text. Base UI disables via aria-disabled/data-disabled rather than the :disabled
+     attribute, so those are excluded here and re-excluded below.
+     See AGENTS.md: "if it is clickable, it has a pointer". */
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  a[href],
+  [role="link"],
+  summary {
     cursor: pointer;
+    }
+  button:disabled,
+  [role="button"]:is([aria-disabled="true"], [data-disabled]),
+  a[aria-disabled="true"] {
+    cursor: not-allowed;
     }
   html {
     @apply font-sans;

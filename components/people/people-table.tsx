@@ -341,6 +341,7 @@ export function PeopleTable() {
             return (
               <TableRow
                 key={row.id}
+                // Already `absolute`, so it is its own positioning context.
                 className={rowClass(true)}
                 style={{
                   ...gridRow(COLUMN_WIDTHS),

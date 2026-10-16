@@ -13,6 +13,7 @@ import {
 import type { Company } from "@/lib/api/generated/model"
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
+import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -31,6 +32,7 @@ import {
   TableCell,
   TableRow,
   cellClass,
+  clickableRowClass,
   gridRow,
   nameButtonClass,
   rowClass,
@@ -213,7 +215,7 @@ export function CompaniesTable() {
           {companies.map((company) => (
             <TableRow
               key={company.id}
-              className={rowClass()}
+              className={cn(rowClass(), clickableRowClass(false))}
               style={gridRow(COLUMN_WIDTHS)}
               onClick={() => setEditing(company)}
             >

@@ -132,6 +132,13 @@ The highest-value section. These have all cost real time.
   resolves after the clear and writes the *old* token straight back into the cache. `token.ts`
   keeps a generation counter for this. Symptom: switching workspaces twice quickly keeps
   the first workspace, silently, with valid-looking data.
+- **If it is clickable, the whole thing is clickable and the cursor says so.** A record
+  row uses the stretched-link pattern: the anchor is the name, a `::after` covers the row.
+  Three things break it silently — Tailwind v4's `after:absolute` emits nothing without
+  `after:content-['']`; `overflow-hidden` on the cell clips the pseudo-element to that one
+  cell; and a `relative` added to a virtualized row overrides its `absolute` and breaks the
+  virtualizer. Never put a bare `onClick` on a `<tr>` — the name must stay a real `<Link>`
+  so it is middle-clickable and shows its URL.
 - **A record is a route, not a sheet.** `/people/[id]` so it can be linked and the
   browser back button closes it. Reading one stacked three overlays before — list, sheet,
   edit dialog — and covered the list while you worked.

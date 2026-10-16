@@ -106,14 +106,47 @@ export function rowClass(virtual?: boolean) {
     : "grid w-full transition-colors hover:bg-muted/50"
 }
 
-/** A body cell. Matches the header cell's flex treatment exactly — see rule 2 above. */
+/**
+ * A body cell. Matches the header cell's flex treatment exactly — see rule 2 above.
+ *
+ * Deliberately NOT overflow-hidden: it clipped the stretched link's ::after to the cell,
+ * so clicking anywhere but the name did nothing. Truncation is the inner span's job.
+ */
 export function cellClass(align?: "left" | "right") {
-  return cn("flex items-center overflow-hidden", align === "right" && "justify-end")
+  return cn("flex items-center", align === "right" && "justify-end")
 }
 
-/** A cell holding the record's primary name, which opens the record. */
+/**
+ * A cell holding the record's primary name, which opens the record.
+ *
+ * The stretched-link pattern: the anchor is only as wide as the text, and a ::after
+ * pseudo-element covers the whole row. So the entire row is the click target — one tap
+ * anywhere on it opens the record — while the anchor itself stays a real link that is
+ * middle-clickable, shows its URL in the status bar, and can be opened in a new tab.
+ *
+ * The alternative, a click handler on the <tr>, gives up all of that and breaks
+ * keyboard access unless the row is also given a role, which erases it from screen-reader
+ * table navigation. See AGENTS.md.
+ *
+ * The row must be `relative` for the ::after to resolve against it.
+ */
 export function nameButtonClass() {
-  return "-my-1 block max-w-full truncate px-1 text-left font-medium hover:underline underline-offset-4 focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+  // after:content-[''] is not optional: in Tailwind v4 `after:absolute` alone emits no
+  // ::after at all, and the whole row silently stops being clickable.
+  // after:cursor-pointer puts the pointer on the actual hit area, so hovering anywhere in
+  // the row shows it — not just the cells the link physically occupies.
+  return "after:absolute after:inset-0 after:content-[''] after:cursor-pointer -my-1 block max-w-full truncate px-1 text-left font-medium hover:underline underline-offset-4 focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+}
+
+/**
+ * Position a row so a stretched link's ::after resolves against it.
+ *
+ * Only for rows that are NOT already positioned. A virtualized row is `absolute`, which
+ * is a positioning context on its own — adding `relative` would override it and break the
+ * virtualizer's translateY maths.
+ */
+export function clickableRowClass(positioned: boolean) {
+  return positioned ? "" : "relative"
 }
 
 export { TableCell, TableRow }
