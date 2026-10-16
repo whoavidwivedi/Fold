@@ -19,90 +19,85 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Separator } from "@/components/ui/separator"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+} from "@/components/ui/sidebar"
+import {
+  RiBuildingLine,
+  RiFlagLine,
+  RiFolderChartLine,
+  RiPriceTagLine,
+  RiUserLine,
+} from "@remixicon/react"
 import { cn } from "cn"
 
+/** `isActive: "url"` means the URL matching is done by the Sidebar, not by hand. */
 const NAV = [
-  { href: "/people", label: "Leads" },
-  { href: "/companies", label: "Companies" },
-  { href: "/deals", label: "Pipeline" },
-  { href: "/tasks", label: "Tasks" },
-  { href: "/reports", label: "Reports" },
-] as const
+  { title: "Leads", url: "/people", icon: RiUserLine },
+  { title: "Companies", url: "/companies", icon: RiBuildingLine },
+  { title: "Pipeline", url: "/deals", icon: RiPriceTagLine },
+  { title: "Tasks", url: "/tasks", icon: RiFlagLine },
+  { title: "Reports", url: "/reports", icon: RiFolderChartLine },
+]
 
-export function AppSidebar({ children }: { children: React.ReactNode }) {
+/**
+ * The sidebar, from the shadcn dashboard-01 block.
+ *
+ * `isActive="url"` is the part that matters. The hand-rolled version computed
+ * `pathname.startsWith(href)` itself and painted the active fill, and it drifted from
+ * every other sidebar state in the app doing the same job. The component owns it now.
+ *
+ * The account menu is in the **header**, not the footer: it used to be duplicated as a
+ * desktop block and a mobile block, and the mobile copy was hidden on phones, so there
+ * was no way to sign out on one.
+ */
+export function AppSidebar({
+  variant = "sidebar",
+  ...props
+}: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
-  const { status, reason } = useRealtime()
-  const [identity, setIdentity] = useState<{ name: string; email: string } | null>(null)
-
-  // Read once on mount. A layout that re-fetches identity on every navigation is a
-  // layout that re-renders the whole shell on every navigation.
-  useEffect(() => {
-    let active = true
-    void authClient.getSession().then(({ data }) => {
-      if (!active || !data?.user) return
-      setIdentity({
-        name: data.user.name ?? "Unnamed",
-        email: data.user.email ?? "",
-      })
-    })
-    return () => {
-      active = false
-    }
-  }, [])
-
   return (
-    <div className="bg-sidebar text-sidebar-foreground flex h-svh w-full flex-col overflow-hidden md:flex-row">
-      {/* Sidebar. On mobile this is a top bar rather than a drawer — the nav is four
-          items, and a hamburger for four items is one tap too many. */}
-      <aside className="flex w-full shrink-0 flex-col gap-4 border-b p-4 md:w-60 md:border-r md:border-b-0">
+    <Sidebar collapsible="icon" variant={variant} {...props}>
+      <SidebarHeader>
         <div className="flex items-center justify-between gap-2">
           <span className="text-base font-semibold tracking-tight">Fold</span>
-
-          <div className="flex items-center gap-2">
-            <RealtimeIndicator status={status} reason={reason} />
-            {/* The account menu lives in the top row at every width. It used to sit at the
-                bottom of the sidebar behind `hidden md:block`, which left a phone user
-                with no way to sign out at all. */}
-            <AccountMenu name={identity?.name} email={identity?.email} />
-          </div>
         </div>
-
         <WorkspaceSwitcher />
+      </SidebarHeader>
 
-        <Separator className="hidden md:block" />
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {NAV.map((item) => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton
+                    tooltip={item.title}
+                    render={<Link href={item.url} />}
+                    isActive={pathname.startsWith(item.url)}
+                  >
+                    <item.icon aria-hidden />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
 
-        {/* Shrink-0 so the labels never squash, overflow-x-auto so the row degrades to a
-            scroll instead of a crop on a narrow phone. Five short labels fit a 375px
-            screen, but the rule is never crop — a font-scale setting is enough to break it. */}
-        <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 md:flex-col md:overflow-visible">
-          {NAV.map((item) => {
-            const active = pathname.startsWith(item.href)
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground shrink-0 rounded-md px-2.5 py-1.5 text-sm",
-                  // Nothing in a list gets an entrance animation. See AGENTS.md: this is
-                  // navigated dozens of times a session.
-                  "transition-colors duration-150",
-                  active && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
-                )}
-              >
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
-      </aside>
-
-      {/* min-h-0, or this flex child refuses to shrink below its content and the
-          overflow escapes to the document — which is the bug that moved the sidebar off
-          the top of a phone screen. */}
-      <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{children}</div>
-    </div>
+      <SidebarFooter />
+      <SidebarRail />
+    </Sidebar>
   )
 }
 
@@ -112,14 +107,49 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
  * One component rather than a desktop-only block and a mobile-only block: two copies of a
  * sign-out is how one of them ends up broken and nobody notices, because the other works.
  */
-function AccountMenu({ name, email }: { name?: string; email?: string }) {
+/**
+ * The header's right-hand controls: realtime state and the account menu.
+ *
+ * Split out so the layout can render them in the always-visible top bar. The sidebar is
+ * a closed sheet below `md`, so anything inside it is unreachable on a phone — and a
+ * sign-out inside a closed sheet is the exact bug this component's docstring says it
+ * exists to prevent, reintroduced by swapping to the block's sidebar.
+ */
+export function AppHeaderControls() {
+  const { status, reason } = useRealtime()
+  const [identity, setIdentity] = useState<{ name: string; email: string } | null>(null)
+
+  useEffect(() => {
+    let active = true
+    void authClient.getSession().then(({ data }) => {
+      if (!active || !data?.user) return
+      setIdentity({ name: data.user.name ?? "Unnamed", email: data.user.email ?? "" })
+    })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  return (
+    <div className="flex items-center gap-2">
+      <RealtimeIndicator status={status} reason={reason} />
+      <AccountMenu name={identity?.name} email={identity?.email} />
+    </div>
+  )
+}
+
+export function AccountMenu({ name, email }: { name?: string; email?: string }) {
   const router = useRouter()
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="ghost" size="icon" aria-label={name ? `Account: ${name}` : "Account"}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={name ? `Account: ${name}` : "Account"}
+          >
             <Avatar className="size-6">
               <AvatarFallback>{initials(name)}</AvatarFallback>
             </Avatar>
@@ -156,8 +186,9 @@ function AccountMenu({ name, email }: { name?: string; email?: string }) {
 /**
  * Realtime status.
  *
- * A subtle dot, not a banner. The stream reconnects on its own, so an alarming
- * treatment would spend most of its life showing a non-problem.
+ * A subtle dot, not a banner. The stream reconnects on its own, so an alarming treatment
+ * would spend most of its life showing a non-problem. The title carries the reason —
+ * "Offline" on its own is a dead end.
  */
 function RealtimeIndicator({
   status,
@@ -175,8 +206,6 @@ function RealtimeIndicator({
     )
   }
 
-  // The title carries the failure reason. "Offline" on its own is a dead end; the
-  // reason turns a guess into a diagnosis in one hover.
   return (
     <Badge
       variant="outline"

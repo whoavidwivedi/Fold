@@ -116,12 +116,25 @@ export function formatDate(value: string) {
   })
 }
 
+/**
+ * Solid, and the same in both modes.
+ *
+ * These were `bg-<hue>-500/10` with a `dark:text-<hue>-300` override, which is two bugs.
+ * A 10% wash is a *different colour against every background it lands on* — over white
+ * it is a pale tint, over the near-black dark surface it is a desaturated near-black and
+ * the tag effectively disappears. And the dark override then changed the text too, so
+ * the tag did not merely get dimmer, it became a different tag.
+ *
+ * A solid tone at the same lightness reads identically on a white page and on a dark
+ * one, which is the only way a badge can mean the same thing in both. No `dark:`
+ * variants here — if a tag ever needs one, the hue is wrong, not the theme.
+ */
 const STAGE_TONE: Record<string, string> = {
-  new: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  contacted: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
-  qualified: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  customer: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  disqualified: "bg-muted text-muted-foreground",
+  new: "bg-sky-100 text-sky-900",
+  contacted: "bg-violet-100 text-violet-900",
+  qualified: "bg-amber-100 text-amber-900",
+  customer: "bg-emerald-100 text-emerald-900",
+  disqualified: "bg-neutral-200 text-neutral-700",
 }
 
 export function StageBadge({ stage }: { stage: string }) {

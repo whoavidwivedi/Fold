@@ -41,6 +41,11 @@ async function clipped(page: Page): Promise<string[]> {
       // for native form submission. It reports 352px of content in a 1px box, which is
       // plumbing, not a crop.
       if (el.closest('[aria-hidden="true"]')) continue
+      // `.sr-only` is the same trick: a 1px box with clip-path: inset(50%), holding
+      // text that is there for a screen reader and invisible on purpose. It reports
+      // real width in a 1px box, which is the definition of not-a-crop. The shadcn
+      // dialog titles are sr-only, so without this every overlay fails.
+      if (el.closest(".sr-only") || el.classList.contains("sr-only")) continue
       bad.push(
         `${el.tagName.toLowerCase()}.${String(el.className).split(" ").slice(0, 3).join(".")}` +
           ` (${el.scrollWidth}px in ${el.clientWidth}px)`,
