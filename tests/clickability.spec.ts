@@ -1,13 +1,18 @@
 import { expect, test, type Page } from "@playwright/test"
 
 /**
- * If it looks clickable, the whole thing is clickable and the cursor says so.
+ * If it looks clickable, the whole thing is clickable, the cursor says so, and pressing it
+ * gives something back.
  *
- * Two things went wrong here that no existing test would have caught. The stretched link
+ * Three things went wrong here that no existing test would have caught. The stretched link
  * silently did nothing, because Tailwind v4's `after:absolute` emits no ::after without
  * `after:content-['']`, so only the underlined name was a target. And the cell's
  * `overflow-hidden` clipped the ::after to that one cell, so even once it rendered it
  * covered nothing.
+ *
+ * The press check is here for the same reason. It is invisible in a screenshot and lives
+ * entirely in a `before:` variant on a pseudo-element, so a Tailwind upgrade that drops or
+ * renames `before:scale-*` removes the feedback without failing anything else.
  */
 
 const API = process.env.API_URL ?? "http://localhost:8080"
@@ -74,6 +79,43 @@ test.describe("clickability", () => {
     // Middle-click and "open in new tab" only work on a real anchor. A row with an
     // onClick would lose both, and its href would be unassertable.
     await expect(link).toHaveAttribute("href", /\/people\/[0-9a-f-]{36}$/)
+  })
+
+  test("pressing a button shrinks its fill, not the button", async ({ page }) => {
+    await signUp(page)
+
+    const button = page.getByRole("button", { name: /new lead/i })
+    // Tailwind v4 sets the standalone `scale` property, so `transform` reads "none" both
+    // idle and pressed. Reading the wrong one makes this pass forever.
+    const scaleOf = () =>
+      button.evaluate((el) => getComputedStyle(el, "::before").scale)
+
+    expect(await scaleOf(), "idle").toBe("none")
+
+    // evaluate, not boundingBox: pressing opens the dialog over the button, and
+    // boundingBox waits for actionability, which would then time out on the very
+    // measurement this test exists to make.
+    const rect = () =>
+      button.evaluate((el) => {
+        const r = el.getBoundingClientRect()
+        return { x: r.x, y: r.y }
+      })
+
+    const before = await rect()
+    const box = (await button.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.down()
+    await page.waitForTimeout(250)
+    const pressed = await scaleOf()
+    const during = await rect()
+    await page.mouse.up()
+
+    expect(pressed, "the ::before layer scales on press").toBe("0.99")
+
+    // And the button itself never moves, which is the whole reason the effect lives on a
+    // pseudo-element rather than on the element.
+    expect(Math.round(during.x), "button x while pressed").toBe(Math.round(before.x))
+    expect(Math.round(during.y), "button y while pressed").toBe(Math.round(before.y))
   })
 
   test("anything clickable shows a pointer, and disabled things do not", async ({ page }) => {

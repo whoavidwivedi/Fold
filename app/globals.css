@@ -205,6 +205,91 @@
   --control-height: 2rem;
 }
 
+/* ---------------------------------------------------------------------------
+   Surface utilities — the fill layer a button paints on.
+
+   A button's element is transparent. Its ::before, at -z-10 inside `isolate`,
+   is the visible body: fill, border, and the whole press transition. These
+   utilities write that layer, which is why they exist at all rather than the
+   variant list in button.tsx carrying six copies of `before:bg-*` — one place
+   to change what "a filled button" means.
+
+   Each is self-contained, hover included. A surface is a treatment, not a
+   colour, and splitting "resting fill" from "hover fill" across two class
+   lists is how the two drift apart.
+--------------------------------------------------------------------------- */
+@utility t-surface {
+  /* The layer itself: a border that is transparent until a surface gives it
+     one, clipped to the padding box so the fill never bleeds under the edge. */
+  &::before {
+    border-color: transparent;
+  }
+}
+
+@utility t-surface-primary {
+  color: var(--primary-foreground);
+  &::before {
+    background-color: var(--primary);
+    border-color: transparent;
+  }
+  &:hover::before {
+    background-color: color-mix(in oklab, var(--primary) 88%, transparent);
+  }
+}
+
+@utility t-surface-outline {
+  color: var(--foreground);
+  &::before {
+    background-color: var(--background);
+    border-color: var(--border);
+  }
+  &:hover::before {
+    background-color: var(--muted);
+  }
+}
+
+@utility t-surface-muted {
+  color: var(--secondary-foreground);
+  &::before {
+    background-color: var(--secondary);
+    border-color: transparent;
+  }
+  &:hover::before {
+    background-color: color-mix(in oklab, var(--secondary) 92%, var(--foreground));
+  }
+}
+
+@utility t-surface-ghost {
+  color: var(--foreground);
+  &::before {
+    background-color: transparent;
+    border-color: transparent;
+  }
+  &:hover::before,
+  &[aria-expanded]::before {
+    background-color: var(--muted);
+  }
+}
+
+@utility t-surface-destructive {
+  color: var(--destructive);
+  &::before {
+    background-color: color-mix(in oklab, var(--destructive) 12%, transparent);
+    border-color: color-mix(in oklab, var(--destructive) 22%, transparent);
+  }
+  &:hover::before {
+    background-color: color-mix(in oklab, var(--destructive) 20%, transparent);
+  }
+}
+
+/* The focus ring is its own transition. Without it a ring snaps on and the only
+   feedback a keyboard user gets for where they landed is the movement itself. */
+@utility transition-ring {
+  transition-property: --tw-ring-color, box-shadow;
+  transition-timing-function: var(--ease-out-ui);
+  transition-duration: var(--duration-fast);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
