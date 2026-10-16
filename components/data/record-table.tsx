@@ -73,8 +73,27 @@ export function RecordTable({
   children: React.ReactNode
 }) {
   return (
-    <div className={cn("hidden min-h-0 overflow-hidden rounded-lg border lg:block", className)}>
-      <div ref={scrollRef} className="h-full overflow-auto">
+    // The slot fills the pane. The frame inside is h-fit with a max-h-full cap, and that
+    // pair is the whole trick:
+    //
+    //   h-fit     → 4 rows produce a 200px frame, not a 700px one with empty space below
+    //   max-h-full→ 50 rows cannot grow past the pane, because growing past it is how 36
+    //                of 50 rows became unreachable: the frame grew to 2400px inside a
+    //                main that is overflow-hidden, so there was no scrollbar and no way
+    //                to see rows 15 to 50. "showing 50 of 420" above fourteen of them.
+    //
+    // Where the parent has no definite height — the record pages, which scroll the
+    // document — a percentage max-height resolves to none and the frame simply hugs, which
+    // is right there.
+    <div className={cn("hidden min-h-0 lg:flex lg:flex-1 lg:flex-col", className)}>
+      {/* This frame is the only scroller. Table renders its own overflow-x-auto wrapper
+          as a direct child, and a second scroll container there silently breaks
+          `sticky top-0` on the header — the header sticks to a container that never
+          scrolls, so it slides off with the first row. */}
+      <div
+        ref={scrollRef}
+        className="h-fit max-h-full min-h-0 w-full overflow-auto rounded-lg border [&>[data-slot=table-container]]:overflow-visible"
+      >
         <Table style={{ display: "grid", minWidth }} className="w-full">
           <TableHeader className="bg-background sticky top-0 z-10 grid">
             {/* w-full matters: without it the header grid sizes to its content while the

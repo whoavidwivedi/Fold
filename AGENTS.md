@@ -204,6 +204,14 @@ The highest-value section. These have all cost real time.
 - **`w-56` on `DropdownMenuContent` overrides its built-in `w-(--anchor-width)`.** The
   class looks harmless and reads as "make it a sensible width". It is what makes a menu
   anchored to a full-width trigger a narrow box floating underneath it.
+- **A button's colours live on its `::before`, never on the element.** The element is
+  transparent and a layer at `before:-z-10` inside `isolate` carries the fill and border;
+  pressing scales that layer to 0.99. That is why the box does not move on press, and it
+  is why a `bg-*` or an `aria-expanded:bg-*` on the element itself paints *over* the layer
+  and hides it completely. `before:rounded-[inherit]` is what keeps the border a pill.
+- **Tailwind v4 sets the standalone `scale` property, not `transform`.** A test that reads
+  `getComputedStyle(el, "::before").transform` sees `"none"` while the button is pressed,
+  and passes forever without checking anything.
 - **A crop is invisible to the test suite; a clip is not.** `tests/mobile.spec.ts` walks
   the DOM for elements whose content is wider than their box, whose `overflow-x` is hidden
   or clip rather than auto or scroll, and which are not ellipsising — and asserts the
