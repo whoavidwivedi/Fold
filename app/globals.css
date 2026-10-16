@@ -218,22 +218,17 @@
    colour, and splitting "resting fill" from "hover fill" across two class
    lists is how the two drift apart.
 --------------------------------------------------------------------------- */
-@utility t-surface {
-  /* The layer itself: a border that is transparent until a surface gives it
-     one, clipped to the padding box so the fill never bleeds under the edge. */
-  &::before {
-    border-color: transparent;
-  }
-}
+/* There is deliberately no bare `t-surface` utility. It used to set a transparent
+   border, which then won over every `t-surface-*` by source order and left the
+   outlined button with no visible border at all — it read as unstyled text. Each
+   concrete surface below owns both its fill and its border, and there is no default
+   for a surface to inherit. */
 
 @utility t-surface-primary {
   color: var(--primary-foreground);
   &::before {
     background-color: var(--primary);
     border-color: transparent;
-  }
-  &:hover::before {
-    background-color: color-mix(in oklab, var(--primary) 88%, transparent);
   }
 }
 
@@ -243,9 +238,6 @@
     background-color: var(--background);
     border-color: var(--border);
   }
-  &:hover::before {
-    background-color: var(--muted);
-  }
 }
 
 @utility t-surface-muted {
@@ -253,9 +245,6 @@
   &::before {
     background-color: var(--secondary);
     border-color: transparent;
-  }
-  &:hover::before {
-    background-color: color-mix(in oklab, var(--secondary) 92%, var(--foreground));
   }
 }
 
@@ -265,10 +254,6 @@
     background-color: transparent;
     border-color: transparent;
   }
-  &:hover::before,
-  &[aria-expanded]::before {
-    background-color: var(--muted);
-  }
 }
 
 @utility t-surface-destructive {
@@ -276,9 +261,6 @@
   &::before {
     background-color: color-mix(in oklab, var(--destructive) 12%, transparent);
     border-color: color-mix(in oklab, var(--destructive) 22%, transparent);
-  }
-  &:hover::before {
-    background-color: color-mix(in oklab, var(--destructive) 20%, transparent);
   }
 }
 
@@ -288,6 +270,153 @@
   transition-property: --tw-ring-color, box-shadow;
   transition-timing-function: var(--ease-out-ui);
   transition-duration: var(--duration-fast);
+}
+
+/* ---------------------------------------------------------------------------
+   Material 3 tokens.
+
+   Every value below is copied from material-components/material-web
+   tokens/versions/v0_192/ — see docs/m3.md for the provenance of each. Nothing
+   here was typed from memory.
+
+   Prefixed `--m3-*` so they cannot be confused with the shadcn tokens they sit
+   beside. The shadcn scale still drives the components that are not part of the
+   Material 3 set.
+--------------------------------------------------------------------------- */
+@theme {
+  /* md-sys-motion — durations */
+  --m3-duration-short1: 50ms;
+  --m3-duration-short2: 100ms;
+  --m3-duration-short3: 150ms;
+  --m3-duration-short4: 200ms;
+  --m3-duration-medium1: 250ms;
+  --m3-duration-medium2: 300ms;
+  --m3-duration-medium3: 350ms;
+  --m3-duration-medium4: 400ms;
+  --m3-duration-long1: 450ms;
+  --m3-duration-long2: 500ms;
+  --m3-duration-long3: 550ms;
+  --m3-duration-long4: 600ms;
+
+  /* md-sys-motion — easing. Accelerate is for leaving, decelerate for arriving. */
+  --m3-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --m3-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --m3-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --m3-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --m3-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --m3-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --m3-easing-linear: cubic-bezier(0, 0, 1, 1);
+
+  /* md-sys-shape */
+  --m3-shape-none: 0px;
+  --m3-shape-xs: 4px;
+  --m3-shape-sm: 8px;
+  --m3-shape-md: 12px;
+  --m3-shape-lg: 16px;
+  --m3-shape-xl: 28px;
+  --m3-shape-full: 9999px;
+
+  /* md-sys-state — the opacity of the overlay per interaction. */
+  --m3-state-hover: 0.08;
+  --m3-state-focus: 0.12;
+  --m3-state-pressed: 0.12;
+  --m3-state-dragged: 0.16;
+
+  /* md-sys-elevation — tonal levels. */
+  --m3-elevation-0: 0;
+  --m3-elevation-1: 1;
+  --m3-elevation-2: 3;
+  --m3-elevation-3: 6;
+  --m3-elevation-4: 8;
+  --m3-elevation-5: 12;
+
+  /* md-sys-typescale — size / line-height / tracking. */
+  --m3-label-large-size: 0.875rem;
+  --m3-label-large-line-height: 1.25rem;
+  --m3-label-large-tracking: 0.00625rem;
+  --m3-label-medium-size: 0.75rem;
+  --m3-label-medium-line-height: 1rem;
+  --m3-label-medium-tracking: 0.03125rem;
+  --m3-label-small-size: 0.6875rem;
+  --m3-label-small-line-height: 1rem;
+  --m3-label-small-tracking: 0.03125rem;
+  --m3-body-large-size: 1rem;
+  --m3-body-large-line-height: 1.5rem;
+  --m3-body-medium-size: 0.875rem;
+  --m3-body-medium-line-height: 1.25rem;
+  --m3-body-small-size: 0.75rem;
+  --m3-body-small-line-height: 1rem;
+  --m3-title-large-size: 1.375rem;
+  --m3-title-large-line-height: 1.75rem;
+  --m3-title-medium-size: 1rem;
+  --m3-title-medium-line-height: 1.5rem;
+}
+
+/* ---------------------------------------------------------------------------
+   State layers — the primitive every interactive surface in the product uses.
+
+   A semi-transparent covering of the element's own foreground colour, at a fixed
+   opacity per interaction. `currentColor` is not a shortcut, it is the spec: the
+   layer colour is `on-primary` on a filled button and `primary` on an outlined
+   one, which is exactly what `currentColor` resolves to from each element's own
+   text colour.
+
+   The opacities come from md-sys-state. This replaces every `hover:bg-muted/50`
+   in the codebase — those were faint because `muted` is grey, not because 50% is
+   low. At 8% of on-surface it reads on any background.
+--------------------------------------------------------------------------- */
+@utility t-state-layer {
+  position: relative;
+  isolation: isolate;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background-color: currentColor;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--m3-duration-short4) var(--m3-easing-standard);
+  }
+}
+
+@utility t-state-hover {
+  &:hover::after {
+    opacity: var(--m3-state-hover);
+  }
+}
+
+@utility t-state-press {
+  &:active::after {
+    opacity: var(--m3-state-pressed);
+  }
+}
+
+@utility t-state-focus {
+  &:focus-visible::after {
+    opacity: var(--m3-state-focus);
+  }
+}
+
+/* For things that are "on": a nav item you are in, a filter you applied, a toggle
+   set. Selected is a state, so it wears a layer like any other. */
+@utility t-state-selected {
+  &[aria-current],
+  &[aria-current="page"],
+  &[aria-selected="true"],
+  &[aria-pressed="true"],
+  &[data-state="on"] {
+    &::after {
+      opacity: var(--m3-state-focus);
+    }
+  }
+}
+
+/* A disabled control shows its disabled state. M3 uses 0.12 on the container and
+   0.38 on the label; opacity-50 on the whole element lands on neither. */
+@utility t-disabled {
+  opacity: 0.38;
 }
 
 @media (prefers-reduced-motion: reduce) {

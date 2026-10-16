@@ -84,11 +84,22 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground shrink-0 rounded-md px-2.5 py-1.5 text-sm",
+                  // Hover is a Material 3 state layer — currentColor at 0.08 — and nothing
+                  // else. They were once the same fill as the active item, which meant
+                  // hovering "Companies" while on "Leads" made Companies look exactly like
+                  // Leads. Active keeps its own fill and gutter bar.
+                  "t-state-layer t-state-hover shrink-0 rounded-md px-2.5 py-1.5 text-sm",
+                  "text-muted-foreground",
                   // Nothing in a list gets an entrance animation. See AGENTS.md: this is
                   // navigated dozens of times a session.
                   "transition-colors duration-150",
-                  active && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+                  "focus-visible:ring-ring/60 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none",
+                  active && [
+                    "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+                    // A bar in the gutter, from md up. On a vertical nav this is the
+                    // unmistakable tell; the fill alone is only a shade apart.
+                    "md:relative md:before:absolute md:before:inset-y-1.5 md:before:left-[-0.5rem] md:before:w-0.5 md:before:rounded-full md:before:bg-sidebar-accent-foreground md:before:content-['']",
+                  ],
                 )}
               >
                 {item.label}

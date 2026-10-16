@@ -160,7 +160,7 @@ export function RecordCards<T extends { id: string }>({
  * the target is bigger than the name.
  */
 export function cardLinkClass() {
-  return "hover:bg-muted/50 flex w-full flex-col gap-1 rounded-lg border p-3 text-left transition-colors"
+  return "t-state-layer t-state-hover flex w-full flex-col gap-1 rounded-lg border p-3 text-left"
 }
 
 /** The class a body row must carry. Absolute for virtualized lists. */
@@ -168,8 +168,8 @@ export function rowClass(virtual?: boolean) {
   // Neither is the whole row clickable any more: the name is a link to the record, so a
   // row that looks clickable but is not would be a lie about where the click goes.
   return virtual
-    ? "absolute grid w-full transition-colors hover:bg-muted/50"
-    : "grid w-full transition-colors hover:bg-muted/50"
+    ? "absolute grid w-full transition-colors hover:bg-muted"
+    : "grid w-full transition-colors hover:bg-muted"
 }
 
 /**
@@ -201,7 +201,10 @@ export function nameButtonClass() {
   // ::after at all, and the whole row silently stops being clickable.
   // after:cursor-pointer puts the pointer on the actual hit area, so hovering anywhere in
   // the row shows it — not just the cells the link physically occupies.
-  return "after:absolute after:inset-0 after:content-[''] after:cursor-pointer -my-1 block max-w-full truncate px-1 text-left font-medium hover:underline underline-offset-4 focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+  // The row is not focusable — a <tr> is not a control — so this link is the only thing
+  // in a row that can take focus, and therefore the only thing that can show where the
+  // keyboard is. The ring has to be strong enough to find.
+  return "after:absolute after:inset-0 after:content-[''] after:cursor-pointer -my-1 block max-w-full truncate px-1 text-left font-medium hover:underline underline-offset-4 focus-visible:ring-ring focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
 }
 
 /**
