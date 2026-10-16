@@ -28,6 +28,14 @@ async function signUp(page: Page) {
   await page.getByRole("button", { name: /create workspace/i }).click()
   await page.waitForURL("**/people", { timeout: 20_000 })
 
+  // Wait for the stream before seeding. These leads are created through the API, not
+  // through the browser, so the only thing that can put them on screen is the SSE event —
+  // and an event emitted before the subscription is live is simply never delivered. This
+  // was the one helper of twelve without this wait, and it was the one that failed first
+  // in CI: the row did not appear, and no amount of retrying on the assertion would have
+  // helped, because the event had already gone.
+  await expect(page.getByText("Live", { exact: true })).toBeVisible({ timeout: 20_000 })
+
   const token = await page.evaluate(async () => {
     const res = await fetch("/api/auth/token", { credentials: "include" })
     return ((await res.json()) as { token: string }).token
