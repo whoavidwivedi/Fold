@@ -17,7 +17,8 @@
     "orval": "orval --config orval.config.ts",
     "db": "docker compose up -d db",
     "test:smoke": "playwright test",
-    "test:smoke:ui": "playwright test --ui"
+    "test:smoke:ui": "playwright test --ui",
+    "seed": "bun scripts/seed.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

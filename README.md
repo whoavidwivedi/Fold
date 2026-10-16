@@ -47,7 +47,20 @@ Then:
 
 1. Open <http://localhost:3000> — you will be redirected to `/sign-up`.
 2. Create an account and workspace.
-3. You land on `/people` with an empty list. Create leads via the API:
+3. You land on `/people` with an empty list.
+
+### Filling it with data
+
+```bash
+bun run seed                                            # 24 companies, 420 leads
+LEADS=2000 bun run seed                                 # more
+SEED_EMAIL=demo@fold.test bun run seed                  # re-runnable: adds to that workspace
+```
+
+It goes through the same HTTP API the browser uses, so the run exercises tenancy,
+validation and the event stream. It prints the login it used.
+
+Or create one lead by hand:
 
 ```bash
 TOKEN=$(curl -s -b cookies.txt http://localhost:3000/api/auth/token | jq -r .token)
