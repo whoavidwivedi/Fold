@@ -21,6 +21,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "cn"
+import { ThemePicker } from "@/components/theme-picker"
 
 const NAV = [
   { href: "/people", label: "Leads" },
@@ -64,6 +65,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             {/* The account menu lives in the top row at every width. It used to sit at the
                 bottom of the sidebar behind `hidden md:block`, which left a phone user
                 with no way to sign out at all. */}
+            {/* Palette, then the account. Both are per-account settings, so they sit
+                together rather than scattering one into the nav. */}
+            <ThemePicker />
             <AccountMenu name={identity?.name} email={identity?.email} />
           </div>
         </div>
@@ -179,8 +183,12 @@ function RealtimeIndicator({
 }) {
   if (status === "live") {
     return (
-      <Badge variant="secondary" className="gap-1.5">
-        <span className="size-1.5 rounded-full bg-emerald-500" />
+      // Not a status colour. `emerald-500` was a Tailwind literal living outside the
+      // palette, so the one dot that reports health was the one colour on screen that no
+      // theme could change. It now names a role, and the role is tertiary — "this works",
+      // not "this is an error", which is what a red dot implies.
+      <Badge variant="live" className="gap-1.5">
+        <span className="size-2 rounded-full bg-[var(--live)]" />
         Live
       </Badge>
     )

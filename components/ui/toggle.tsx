@@ -3,20 +3,31 @@
 import { Toggle as TogglePrimitive } from "@base-ui/react/toggle"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
+import { buttonInteraction } from "@/components/ui/button"
 
+// A toggle IS a button, so it gets the button treatment rather than a second version of
+// it. Before this it kept the stock shadcn string — `hover:bg-muted`, `transition-all`,
+// no state layer — which is why the interaction-type picker looked like a different
+// component from the buttons sitting beside it.
 const toggleVariants = cva(
-  "group/toggle inline-flex items-center justify-center gap-1 rounded-lg text-sm font-medium whitespace-nowrap transition-all outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 aria-pressed:bg-muted data-[state=on]:bg-muted dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  [
+    buttonInteraction,
+    // The group owns the outer corners, so a member must not round the side it shares.
+    "rounded-[12px] group-data-[spacing=0]/toggle-group:rounded-none",
+    "disabled:pointer-events-none disabled:text-muted-foreground disabled:before:bg-muted",
+    "[&_svg:not([class*='size-'])]:size-4",
+  ].join(" "),
   {
     variants: {
       variant: {
-        default: "bg-transparent",
-        outline: "border border-input bg-transparent hover:bg-muted",
+        default: "t-surface-ghost",
+        outline: "t-surface-outline",
       },
       size: {
         default:
-          "h-8 min-w-8 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        sm: "h-7 min-w-7 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
-        lg: "h-9 min-w-9 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+          "h-8 min-w-8 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 text-[length:var(--m3-label-large-size)] leading-[length:var(--m3-label-large-line-height)]",
+        sm: "h-7 min-w-7 px-2.5 text-[length:var(--m3-label-medium-size)] leading-[length:var(--m3-label-medium-line-height)] has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        lg: "h-9 min-w-9 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 text-[length:var(--m3-label-large-size)] leading-[length:var(--m3-label-large-line-height)]",
       },
     },
     defaultVariants: {
@@ -36,6 +47,7 @@ function Toggle({
     <TogglePrimitive
       data-slot="toggle"
       className={cn(toggleVariants({ variant, size, className }))}
+      aria-pressed={props.value !== undefined ? undefined : undefined}
       {...props}
     />
   )

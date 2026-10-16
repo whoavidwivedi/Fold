@@ -121,13 +121,13 @@ const STAGE_TONE: Record<string, string> = {
   // 10% wash: a different colour against every surface the badge lands on, and roughly
   // 3% of luminance, so the stage was hard to read at all. A badge names a role now.
   new:
-    "bg-[oklch(0.92_0.085_245)] text-[oklch(0.32_0.099_245)] dark:bg-[oklch(0.4_0.07_245)] dark:text-[oklch(0.9_0.085_245)]",
+    "bg-[oklch(0.92_0.038_205)] text-[oklch(0.32_0.052_205)] dark:bg-[oklch(0.4_0.038_205)] dark:text-[oklch(0.9_0.038_205)]",
   contacted:
-    "bg-[oklch(0.92_0.085_305)] text-[oklch(0.32_0.099_305)] dark:bg-[oklch(0.4_0.07_305)] dark:text-[oklch(0.9_0.085_305)]",
+    "bg-[oklch(0.92_0.038_340)] text-[oklch(0.32_0.052_340)] dark:bg-[oklch(0.4_0.038_340)] dark:text-[oklch(0.9_0.038_340)]",
   qualified:
-    "bg-[oklch(0.92_0.085_60)] text-[oklch(0.32_0.099_60)] dark:bg-[oklch(0.4_0.07_60)] dark:text-[oklch(0.9_0.085_60)]",
+    "bg-[oklch(0.92_0.038_72)] text-[oklch(0.32_0.052_72)] dark:bg-[oklch(0.4_0.038_72)] dark:text-[oklch(0.9_0.038_72)]",
   customer:
-    "bg-[oklch(0.92_0.085_158)] text-[oklch(0.32_0.099_158)] dark:bg-[oklch(0.4_0.07_158)] dark:text-[oklch(0.9_0.085_158)]",
+    "bg-[oklch(0.92_0.038_145)] text-[oklch(0.32_0.052_145)] dark:bg-[oklch(0.4_0.038_145)] dark:text-[oklch(0.9_0.038_145)]",
   disqualified: "bg-muted text-muted-foreground",
 }
 

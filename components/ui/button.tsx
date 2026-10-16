@@ -29,8 +29,13 @@ import { cn } from "cn"
  * Sizes below the 40px default are ours. M3 defines one button height; a CRM needs a
  * compact one, and inventing a 40px minimum would push every dense control out of reach.
  */
-const buttonVariants = cva(
-  [
+/**
+ * Everything that makes something behave like an M3 button: the fill layer, the press
+ * morph, the state layer, the focus ring. Exported because a button is a button — Toggle
+ * imports this instead of restating a version, which is how the interaction-type picker
+ * ended up on stock shadcn while the buttons beside it had a state layer.
+ */
+export const buttonInteraction = [
     "group/button relative isolate inline-flex shrink-0 cursor-pointer items-center justify-center",
     // overflow-hidden clips the ripple to the pill. It does not clip the focus ring —
     // overflow clips content, not box-shadow.
@@ -77,8 +82,11 @@ const buttonVariants = cva(
     "focus-visible:ring-ring focus-visible:ring-3 focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:outline-none",
     "focus-visible:rounded-[8px]",
     "aria-invalid:ring-destructive/20 aria-invalid:ring-3 dark:aria-invalid:ring-destructive/40",
-    "[&_svg]:pointer-events-none [&_svg]:shrink-0",
-  ].join(" "),
+    "[&_svg]:pointer-events-none [&_svg]:shrink-0"
+].join(" ")
+
+const buttonVariants = cva(
+  [buttonInteraction],
   {
     variants: {
       variant: {
