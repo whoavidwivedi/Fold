@@ -307,6 +307,45 @@
   --m3-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
   --m3-easing-linear: cubic-bezier(0, 0, 1, 1);
 
+  /* ---------------------------------------------------------------------
+     M3 Expressive motion physics.
+
+     A spring has no duration, so the spec ships bezier curves that imitate one.
+     They are not interchangeable: SPATIAL springs overshoot, because position
+     and size are physical and may pass their target. EFFECTS springs are
+     critically damped and must not, because an opacity that bounces past 100%
+     clips and a colour that overshoots is just wrong.
+
+     The rule the spec gives for a pressed button is the one to remember: shape
+     and size get a spatial spring, colour and opacity get an effects spring.
+     Two springs on one interaction, because they are animating different kinds
+     of property. Using a spatial spring on the state layer is how a fade ends
+     up flashing.
+  --------------------------------------------------------------------- */
+  --m3-spring-expressive-fast-spatial: cubic-bezier(0.42, 1.67, 0.21, 0.9);
+  --m3-spring-expressive-default-spatial: cubic-bezier(0.38, 1.21, 0.22, 1);
+  --m3-spring-expressive-slow-spatial: cubic-bezier(0.39, 1.29, 0.35, 0.98);
+  --m3-spring-expressive-fast-effects: cubic-bezier(0.31, 0.94, 0.34, 1);
+  --m3-spring-expressive-default-effects: cubic-bezier(0.34, 0.8, 0.34, 1);
+  --m3-spring-expressive-slow-effects: cubic-bezier(0.34, 0.88, 0.34, 1);
+
+  /* The standard scheme is the same effects springs with spatial springs that
+     barely overshoot (stiffness 1400/700/300 against expressive's 800/380/200).
+     Chrome, lists and navigation use these; expressive is for key actions. */
+  --m3-spring-standard-fast-spatial: cubic-bezier(0.27, 1.06, 0.18, 1);
+  --m3-spring-standard-default-spatial: cubic-bezier(0.27, 1.06, 0.18, 1);
+  --m3-spring-standard-slow-spatial: cubic-bezier(0.27, 1.06, 0.18, 1);
+
+  /* Durations that pair with the springs above. Spatial is slower because a
+     shape morph you cannot follow is not a morph. */
+  --m3-spring-expressive-fast-spatial-duration: 350ms;
+  --m3-spring-expressive-default-spatial-duration: 500ms;
+  --m3-spring-expressive-slow-spatial-duration: 650ms;
+  --m3-spring-expressive-fast-effects-duration: 150ms;
+  --m3-spring-expressive-default-effects-duration: 200ms;
+  --m3-spring-expressive-slow-effects-duration: 300ms;
+
+
   /* md-sys-shape */
   --m3-shape-none: 0px;
   --m3-shape-xs: 4px;
@@ -348,8 +387,20 @@
   --m3-body-small-line-height: 1rem;
   --m3-title-large-size: 1.375rem;
   --m3-title-large-line-height: 1.75rem;
+  --m3-title-large-tracking: 0rem;
   --m3-title-medium-size: 1rem;
   --m3-title-medium-line-height: 1.5rem;
+  --m3-title-medium-tracking: 0.009375rem;
+  --m3-title-small-size: 0.875rem;
+  --m3-title-small-line-height: 1.25rem;
+  --m3-title-small-tracking: 0.00625rem;
+  --m3-headline-small-size: 1.5rem;
+  --m3-headline-small-line-height: 2rem;
+  --m3-headline-small-tracking: 0rem;
+  --m3-headline-medium-size: 1.75rem;
+  --m3-headline-medium-line-height: 2.25rem;
+  --m3-display-small-size: 2.25rem;
+  --m3-display-small-line-height: 2.5rem;
 }
 
 /* ---------------------------------------------------------------------------
@@ -377,7 +428,10 @@
     background-color: currentColor;
     opacity: 0;
     pointer-events: none;
-    transition: opacity var(--m3-duration-short4) var(--m3-easing-standard);
+    /* Effects spring, not spatial: opacity must not overshoot, or the fade
+       flashes. See the note on the spring tokens above. */
+    transition: opacity var(--m3-spring-expressive-fast-effects-duration)
+      var(--m3-spring-expressive-fast-effects);
   }
 }
 
@@ -417,6 +471,105 @@
    0.38 on the label; opacity-50 on the whole element lands on neither. */
 @utility t-disabled {
   opacity: 0.38;
+}
+
+/* ---------------------------------------------------------------------------
+   Type scale, as utilities.
+
+   M3 defines fifteen roles across size, line-height and tracking. Writing them
+   as inline arbitrary values puts the numbers in six components and makes a
+   change an audit. These are the roles, named as the spec names them.
+
+   Title roles use the brand typeface and body/label use plain. We have one
+   family, so that distinction is skipped rather than faked with a weight.
+--------------------------------------------------------------------------- */
+@utility t-type-display-small {
+  font-size: var(--m3-display-small-size);
+  line-height: var(--m3-display-small-line-height);
+  font-weight: 400;
+  letter-spacing: -0.025rem;
+}
+@utility t-type-headline-small {
+  font-size: var(--m3-headline-small-size);
+  line-height: var(--m3-headline-small-line-height);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+@utility t-type-title-large {
+  font-size: var(--m3-title-large-size);
+  line-height: var(--m3-title-large-line-height);
+  font-weight: 400;
+  letter-spacing: var(--m3-title-large-tracking);
+}
+@utility t-type-title-medium {
+  font-size: var(--m3-title-medium-size);
+  line-height: var(--m3-title-medium-line-height);
+  font-weight: 500;
+  letter-spacing: var(--m3-title-medium-tracking);
+}
+@utility t-type-title-small {
+  font-size: var(--m3-title-small-size);
+  line-height: var(--m3-title-small-line-height);
+  font-weight: 500;
+  letter-spacing: var(--m3-title-small-tracking);
+}
+@utility t-type-body-large {
+  font-size: var(--m3-body-large-size);
+  line-height: var(--m3-body-large-line-height);
+  font-weight: 400;
+  letter-spacing: 0.03125rem;
+}
+@utility t-type-body-medium {
+  font-size: var(--m3-body-medium-size);
+  line-height: var(--m3-body-medium-line-height);
+  font-weight: 400;
+  letter-spacing: 0.015625rem;
+}
+@utility t-type-body-small {
+  font-size: var(--m3-body-small-size);
+  line-height: var(--m3-body-small-line-height);
+  font-weight: 400;
+  letter-spacing: 0.025rem;
+}
+@utility t-type-label-large {
+  font-size: var(--m3-label-large-size);
+  line-height: var(--m3-label-large-line-height);
+  font-weight: 500;
+  letter-spacing: var(--m3-label-large-tracking);
+}
+@utility t-type-label-medium {
+  font-size: var(--m3-label-medium-size);
+  line-height: var(--m3-label-medium-line-height);
+  font-weight: 500;
+  letter-spacing: var(--m3-label-medium-tracking);
+}
+@utility t-type-label-small {
+  font-size: var(--m3-label-small-size);
+  line-height: var(--m3-label-small-line-height);
+  font-weight: 500;
+  letter-spacing: var(--m3-label-small-tracking);
+}
+
+/* ---------------------------------------------------------------------------
+   M3 colour roles.
+
+   md-sys-color defines ~50 roles in families: primary/secondary/tertiary each
+   with an `on-` counterpart and a `-container` pair, a neutral family, five
+   `surface-container` steps, and a utility family. The rule that makes a dark
+   theme a variable swap rather than an audit is that a component never names a
+   raw colour — it names a role.
+
+   These map onto the shadcn palette already in this file rather than replacing
+   it. The one thing added outright is the `surface-container` ramp: M3 builds
+   every menu, dialog and sheet out of those five steps, and we were reaching for
+   `popover`, which is one colour doing five jobs.
+--------------------------------------------------------------------------- */
+@theme inline {
+  --m3-surface-container-lowest: var(--background);
+  --m3-surface-container-low: color-mix(in oklab, var(--muted) 30%, var(--background));
+  --m3-surface-container: var(--muted);
+  --m3-surface-container-high: color-mix(in oklab, var(--muted) 70%, var(--foreground) 4%);
+  --m3-surface-container-highest: color-mix(in oklab, var(--muted) 85%, var(--foreground) 8%);
 }
 
 @media (prefers-reduced-motion: reduce) {

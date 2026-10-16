@@ -178,11 +178,11 @@ export function RecordDetail({ personId }: { personId: string }) {
             {/* Wraps, never truncates. This heading is the whole reason the page
               exists; "Maximiliana Feathers…" is the one string that must not be
               shortened. A long unbroken email still needs breaking. */}
-          <h1 className="text-xl font-semibold break-words tracking-tight">
+          <h1 className="t-type-title-large break-words">
               {person.data ? fullName(person.data) : <Skeleton className="h-6 w-48" />}
             </h1>
             {person.data && (
-              <p className="text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-sm">
+              <p className="text-muted-foreground t-type-body-medium mt-1 flex flex-wrap items-center gap-2">
                 {person.data.email && (
                   <a
                     href={`mailto:${person.data.email}`}
