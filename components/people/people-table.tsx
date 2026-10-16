@@ -30,8 +30,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { TableCell, TableHead } from "@/components/ui/table"
 import {
+  RecordCards,
   RecordTable,
   TableRow,
+  cardLinkClass,
   cellClass,
   gridRow,
   nameButtonClass,
@@ -312,11 +314,8 @@ export function PeopleTable() {
         // The frame hugs its rows. flex-1 stretched it to the viewport bottom, which
         // left a tall empty box under a short list and read as a broken frame.
         <>
-        {/* Table from md up. Below that a 5-column grid shows two columns and clips the
-            rest, so a phone gets stacked cards — the pattern every CRM converges on. Same
-            shell as the companies table, so the two cannot disagree about column geometry. */}
+        {/* RecordTable is md-and-up by construction; RecordCards is the phone layout. */}
         <RecordTable
-          className="hidden md:block"
           columns={COLUMN_WIDTHS}
           minWidth={TABLE_MIN_WIDTH}
           scrollRef={scrollRef}
@@ -359,63 +358,64 @@ export function PeopleTable() {
           })}
         </RecordTable>
 
-        <ul className="divide-border divide-y overflow-hidden rounded-lg border md:hidden">
-          {people.map((person) => (
-            <li key={person.id} className="border-b last:border-b-0">
-              {/* A link, so the record is middle-clickable and the status bar shows where
-                  it goes. The whole card is the target. */}
-              <Link
-                href={`/people/${person.id}`}
-                className="flex w-full flex-col gap-1 text-left transition-colors hover:bg-muted/50"
-              >
-                <span className="flex items-baseline justify-between gap-2">
-                  <span className="truncate font-medium">
-                    {[person.firstName, person.lastName].filter(Boolean).join(" ") ||
-                      "Unnamed"}
-                  </span>
-                  <StageBadge stage={person.lifecycleStage} />
+        <RecordCards items={people}>
+          {(person) => (
+            <Link href={`/people/${person.id}`} className={cardLinkClass()}>
+              <span className="flex items-baseline justify-between gap-2">
+                <span className="truncate font-medium">
+                  {[person.firstName, person.lastName].filter(Boolean).join(" ") ||
+                    "Unnamed"}
                 </span>
-                {person.email && (
-                  <span className="text-muted-foreground truncate text-sm">
-                    {person.email}
-                  </span>
-                )}
-                <span className="text-muted-foreground truncate text-xs">
-                  {person.source ?? "No source"}
-                  {person.score > 0 && ` · score ${person.score}`}
+                <StageBadge stage={person.lifecycleStage} />
+              </span>
+              {person.email && (
+                <span className="text-muted-foreground truncate text-sm">
+                  {person.email}
                 </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+              )}
+              <span className="text-muted-foreground truncate text-xs">
+                {person.source ?? "No source"}
+                {person.score > 0 && ` · score ${person.score}`}
+              </span>
+            </Link>
+          )}
+        </RecordCards>
         </>
       )}
 
-      <div className="flex shrink-0 items-center justify-between">
-        <p className="text-muted-foreground text-sm">
-          Page {pageIndex + 1}
-          {query.data?.total != null && ` · showing ${people.length} of ${query.data.total}`}
-        </p>
+      {/* A footer with two disabled buttons and "showing 4 of 4" is pure noise, and on a
+          phone it is noise spent out of the viewport you have to scroll. Only when there
+          is genuinely a second page. */}
+      {(pageIndex > 0 || query.data?.nextCursor) && (
+        <div className="flex shrink-0 items-center justify-between">
+          <p className="text-muted-foreground text-sm">
+            Page {pageIndex + 1}
+            {query.data?.total != null &&
+              ` · showing ${people.length} of ${query.data.total}`}
+          </p>
 
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={goBack}
-            disabled={pageIndex === 0 || query.isFetching}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={goNext}
-            disabled={!query.data?.nextCursor || query.isFetching}
-          >
-            Next
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goBack}
+              disabled={pageIndex === 0 || query.isFetching}
+              className="max-md:h-11 max-md:px-4"
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goNext}
+              disabled={!query.data?.nextCursor || query.isFetching}
+              className="max-md:h-11 max-md:px-4"
+            >
+              Next
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
     </div>
   )
@@ -439,10 +439,15 @@ function StageFilter({
           <Button
             key={option.value || "all"}
             size="sm"
-            variant={active ? "secondary" : "ghost"}
+            // Inactive chips are outlined, not ghost. As ghosts they have no border, no
+            // fill and no icon, so on a phone they read as static labels — a row of words
+            // with one of them shaded, and nothing saying you can tap the rest.
+            variant={active ? "secondary" : "outline"}
             aria-pressed={active}
             onClick={() => onChange(option.value)}
-            className={cn("transition-colors", active && "font-medium")}
+            // 44px is the thumb minimum. These are the most-tapped control on the screen
+            // and h-7 is a 28px target. Desktop keeps its denser size.
+            className={cn("max-md:h-11 max-md:px-4", active && "font-medium")}
           >
             {option.label}
           </Button>

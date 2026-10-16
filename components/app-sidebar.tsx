@@ -32,7 +32,6 @@ const NAV = [
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const router = useRouter()
   const { status, reason } = useRealtime()
   const [identity, setIdentity] = useState<{ name: string; email: string } | null>(null)
 
@@ -53,21 +52,30 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <div className="bg-sidebar text-sidebar-foreground flex min-h-svh w-full flex-col md:flex-row">
+    <div className="bg-sidebar text-sidebar-foreground flex h-svh w-full flex-col overflow-hidden md:flex-row">
       {/* Sidebar. On mobile this is a top bar rather than a drawer — the nav is four
           items, and a hamburger for four items is one tap too many. */}
-      <aside className="flex w-full shrink-0 flex-col gap-4 border-b p-4 md:h-svh md:w-60 md:border-r md:border-b-0">
+      <aside className="flex w-full shrink-0 flex-col gap-4 border-b p-4 md:w-60 md:border-r md:border-b-0">
         <div className="flex items-center justify-between gap-2">
           <span className="text-base font-semibold tracking-tight">Fold</span>
 
-          <RealtimeIndicator status={status} reason={reason} />
+          <div className="flex items-center gap-2">
+            <RealtimeIndicator status={status} reason={reason} />
+            {/* The account menu lives in the top row at every width. It used to sit at the
+                bottom of the sidebar behind `hidden md:block`, which left a phone user
+                with no way to sign out at all. */}
+            <AccountMenu name={identity?.name} email={identity?.email} />
+          </div>
         </div>
 
         <WorkspaceSwitcher />
 
         <Separator className="hidden md:block" />
 
-        <nav className="flex gap-1 md:flex-col">
+        {/* Shrink-0 so the labels never squash, overflow-x-auto so the row degrades to a
+            scroll instead of a crop on a narrow phone. Five short labels fit a 375px
+            screen, but the rule is never crop — a font-scale setting is enough to break it. */}
+        <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 md:flex-col md:overflow-visible">
           {NAV.map((item) => {
             const active = pathname.startsWith(item.href)
             return (
@@ -76,7 +84,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md px-2.5 py-1.5 text-sm",
+                  "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground shrink-0 rounded-md px-2.5 py-1.5 text-sm",
                   // Nothing in a list gets an entrance animation. See AGENTS.md: this is
                   // navigated dozens of times a session.
                   "transition-colors duration-150",
@@ -88,52 +96,60 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             )
           })}
         </nav>
-
-        <div className="mt-auto hidden md:block">
-          <Separator className="mb-3" />
-
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button variant="ghost" className="h-auto w-full justify-start px-2 py-1.5">
-                  <Avatar className="size-6">
-                    <AvatarFallback>
-                      {initials(identity?.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="truncate text-sm">{identity?.name ?? "…"}</span>
-                </Button>
-              }
-            />
-            <DropdownMenuContent side="right" align="end" className="w-56">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel className="truncate text-xs font-normal">
-                  {identity?.email}
-                </DropdownMenuLabel>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onClick={() => {
-                    void authClient.signOut().then(() => {
-                      // router.refresh() so the server layout re-reads the session and
-                      // redirects. A hard navigation would also work but throws away the
-                      // client cache on the way out for no reason.
-                      router.push("/sign-in")
-                      router.refresh()
-                    })
-                  }}
-                >
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </aside>
 
-      <div className="min-w-0 flex-1">{children}</div>
+      {/* min-h-0, or this flex child refuses to shrink below its content and the
+          overflow escapes to the document — which is the bug that moved the sidebar off
+          the top of a phone screen. */}
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{children}</div>
     </div>
+  )
+}
+
+/**
+ * Identity and sign-out.
+ *
+ * One component rather than a desktop-only block and a mobile-only block: two copies of a
+ * sign-out is how one of them ends up broken and nobody notices, because the other works.
+ */
+function AccountMenu({ name, email }: { name?: string; email?: string }) {
+  const router = useRouter()
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button variant="ghost" size="icon" aria-label={name ? `Account: ${name}` : "Account"}>
+            <Avatar className="size-6">
+              <AvatarFallback>{initials(name)}</AvatarFallback>
+            </Avatar>
+          </Button>
+        }
+      />
+      <DropdownMenuContent side="right" align="end" className="w-56">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="truncate text-xs font-normal">
+            {email}
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem
+            onClick={() => {
+              void authClient.signOut().then(() => {
+                // router.refresh() so the server layout re-reads the session and
+                // redirects. A hard navigation would also work but throws away the
+                // client cache on the way out for no reason.
+                router.push("/sign-in")
+                router.refresh()
+              })
+            }}
+          >
+            Sign out
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

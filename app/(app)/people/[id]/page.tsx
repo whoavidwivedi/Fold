@@ -15,7 +15,7 @@ export default async function PersonPage({
   const { id } = await params
 
   return (
-    <main className="h-svh overflow-hidden">
+    <main className="h-full overflow-hidden">
       <RecordDetail personId={id} />
     </main>
   )

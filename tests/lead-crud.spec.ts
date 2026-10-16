@@ -137,6 +137,12 @@ test.describe("lead CRUD", () => {
     await dialog.getByLabel("Email").fill("")
     await dialog.getByRole("button", { name: /save changes/i }).click()
 
+    // Wait for the dialog to close. RecordDialog only closes on success, so this is both
+    // the completion signal and a failure check — without it the GET below races the PATCH
+    // and reads the record as it was before the save. It failed in CI at 10ms of API
+    // latency what the local 1ms hid.
+    await expect(dialog).toHaveCount(0)
+
     const person = await (
       await page.request.get(`${API}/v1/persons/${await currentPersonId(page)}`, {
         headers: await authHeaders(page),

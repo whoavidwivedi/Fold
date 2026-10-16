@@ -249,7 +249,10 @@ test.describe("company form invariants", () => {
     await dialog.getByLabel("Industry").fill("")
     await dialog.getByRole("button", { name: /save changes/i }).click()
 
-    await page.waitForTimeout(800)
+    // The dialog closing is the save finishing — it only closes on success. A sleep was
+    // here and was a race with extra steps.
+    await expect(dialog).toHaveCount(0)
+
     const company = await (
       await page.request.get(`${API}/v1/companies/${companyId}`, {
         headers: await authHeaders(page),

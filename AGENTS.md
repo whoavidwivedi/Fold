@@ -184,3 +184,29 @@ The highest-value section. These have all cost real time.
   row and put a real `<button>` in the first cell; a `onClick` on the `<tr>` is a fine
   pointer shortcut alongside it. Remember `<button>` takes phrasing content only — spans,
   never `<div>`s.
+- **`RecordTable` owns the `lg` breakpoint; `RecordCards` is the phone layout.** Not a
+  convention — the table is `hidden lg:block` in the component itself, so a caller
+  physically cannot render one without the narrow half. It used to be each caller's job,
+  and a company's contact table rendered without the guard and showed 2 of its 3 columns
+  on a phone: the email column ran off the right edge and the Stage column was not in the
+  viewport at all. Silent — no error, no failed assertion. `lg` and not `md` because the
+  sidebar is 240px, so at 768px a tablet leaves a 528px pane against a 760px table. It
+  scrolled, which is not a crop but reads like one. At 1024px every table fits.
+- **The app shell is `h-svh` and the content pane is `flex-1 min-h-0`.** It was
+  `min-h-svh` with an `h-svh` page stacked under it, so on a phone the document was
+  always ~140px taller than the viewport and the sidebar scrolled off the top on its own.
+  `min-h-0` on the pane is not optional either: without it the flex child refuses to shrink
+  and the overflow escapes back to the document.
+- **`DialogContent` needs `max-h` + `overflow-y-auto`.** The edit form is ~735px tall and a
+  390×780 phone with the keyboard up leaves ~300px. Without a ceiling the popup grew past
+  the viewport, centred on it, so **Save sat off-screen with no scroll to reach it** — the
+  form could not be submitted at all.
+- **`w-56` on `DropdownMenuContent` overrides its built-in `w-(--anchor-width)`.** The
+  class looks harmless and reads as "make it a sensible width". It is what makes a menu
+  anchored to a full-width trigger a narrow box floating underneath it.
+- **A crop is invisible to the test suite; a clip is not.** `tests/mobile.spec.ts` walks
+  the DOM for elements whose content is wider than their box, whose `overflow-x` is hidden
+  or clip rather than auto or scroll, and which are not ellipsising — and asserts the
+  document does not scroll sideways. Run it after touching any layout. Base UI's Select
+  keeps an `aria-hidden` input clipped with `clip-path` for form submission; that one is
+  excluded and would otherwise be a false positive on every screen.

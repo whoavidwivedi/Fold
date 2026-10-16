@@ -8,7 +8,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/u
  */
 export default function Page() {
   return (
-    <main className="grid h-svh place-items-center p-6">
+    <main className="grid h-full place-items-center p-6">
       <Empty className="max-w-md">
         <EmptyHeader>
           <EmptyTitle>Reports</EmptyTitle>
