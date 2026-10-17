@@ -4,13 +4,13 @@ import Link from "next/link"
 import { useMemo, useState } from "react"
 import { RiAddLine } from "@remixicon/react"
 
-import type { Company } from "@/lib/api/generated/model"
 import { listCompanies } from "@/lib/api/generated/endpoints/companies/companies"
 import { useQuery } from "@tanstack/react-query"
 
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { cn } from "cn"
+import { RecordListHeader, RecordToolbar } from "@/components/data/record-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -31,8 +31,11 @@ const PAGE_SIZE = 50
 
 // One grid template, handed to RecordTable which applies it to the header and every row.
 // Mirrors components/people/people-table.tsx — the two lists must not drift apart.
+// Proportioned to the content, not to the viewport. `1.4fr` on Name was 530px of mostly
+// air on a 1440px screen, which pushed Domain and Industry 300px further right than they
+// needed to be and made the table read as two columns and a gap.
 const COLUMN_WIDTHS =
-  "minmax(200px, 2fr) minmax(160px, 1.2fr) minmax(140px, 1fr) minmax(80px, auto)"
+  "minmax(180px, 1.4fr) minmax(140px, 1fr) minmax(160px, 1.2fr) minmax(80px, auto)"
 const TABLE_MIN_WIDTH = 640
 
 /** A company needs a name and nothing else. Named once so the guard and the body agree. */
@@ -66,16 +69,15 @@ export function CompaniesTable() {
 
   return (
     <div className="flex h-full flex-col gap-4 p-4 md:p-6">
-      <header>
-        <h1 className="text-xl font-semibold tracking-tight">Companies</h1>
-        <p className="text-muted-foreground text-sm">
-          {query.isPending
+      <RecordListHeader
+        title="Companies"
+        meta={
+          query.isPending
             ? "Loading…"
-            : `${query.data?.total ?? 0} in this workspace`}
-        </p>
-      </header>
-
-      <div className="flex flex-wrap items-center gap-2">
+            : `${query.data?.total ?? 0} in this workspace`
+        }
+      >
+        <RecordToolbar>
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -91,7 +93,8 @@ export function CompaniesTable() {
             New company
           </Button>
         </div>
-      </div>
+      </RecordToolbar>
+      </RecordListHeader>
 
       {query.isPending ? (
         <div className="flex flex-col gap-2 rounded-lg border p-4">

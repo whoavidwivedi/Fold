@@ -49,7 +49,9 @@ test.describe("lead CRUD", () => {
     await signUp(page)
     await expect(page.getByText("No leads yet")).toBeVisible()
 
-    await page.getByRole("button", { name: /new lead/i }).click()
+    // A link, because /people/new is a route. A dialog covers the list it came from.
+    await page.getByRole("link", { name: /new lead/i }).click()
+    await page.waitForURL("**/people/new")
 
     // A name is the minimum: a lead with neither name is unfindable afterwards.
     await expect(page.getByRole("button", { name: /create lead/i })).toBeDisabled()
@@ -57,7 +59,11 @@ test.describe("lead CRUD", () => {
     await page.getByLabel("Last name").fill("Created")
     await page.getByLabel("Email").fill("nia@created.test")
     await page.getByRole("button", { name: /create lead/i }).click()
+    // Saving lands on the new record — the thing you just made is what you want to see.
+    await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Nia")
 
+    await page.goto("/people")
     await expect(leadRow(page, "Nia Created")).toBeVisible()
     await expect(page.getByRole("cell", { name: "nia@created.test" })).toBeVisible()
 
@@ -71,11 +77,14 @@ test.describe("lead CRUD", () => {
 
   test("a last name alone is enough", async ({ page }) => {
     await signUp(page)
-    await page.getByRole("button", { name: /new lead/i }).click()
+    await page.getByRole("link", { name: /new lead/i }).click()
+    await page.waitForURL("**/people/new")
 
     await page.getByLabel("Last name").fill("Mononym")
     await expect(page.getByRole("button", { name: /create lead/i })).toBeEnabled()
     await page.getByRole("button", { name: /create lead/i }).click()
+    await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
+    await page.goto("/people")
 
     await expect(leadRow(page, "Mononym")).toBeVisible()
   })

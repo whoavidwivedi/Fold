@@ -250,7 +250,7 @@ test.describe("phone layout", () => {
       expect(box!.height, `"${name}" target height`).toBeGreaterThanOrEqual(44)
     }
 
-    const create = await page.getByRole("button", { name: /new lead/i }).boundingBox()
+    const create = await page.getByRole("link", { name: /new lead/i }).boundingBox()
     expect(create!.height, '"New lead" target height').toBeGreaterThanOrEqual(44)
   })
 })
