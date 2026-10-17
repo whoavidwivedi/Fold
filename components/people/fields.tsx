@@ -1,5 +1,13 @@
 "use client"
 
+import {
+  RiCheckLine,
+  RiCloseCircleLine,
+  RiPhoneLine,
+  RiSparklingLine,
+  RiStarLine,
+} from "@remixicon/react"
+
 import { cn } from "cn"
 import { Badge } from "@/components/ui/badge"
 
@@ -117,34 +125,75 @@ export function formatDate(value: string) {
 }
 
 /**
- * Solid, and the same in both modes.
+ * One hue per stage, each with a dark counterpart, and one icon.
  *
- * These were `bg-<hue>-500/10` with a `dark:text-<hue>-300` override, which is two bugs.
- * A 10% wash is a *different colour against every background it lands on* — over white
- * it is a pale tint, over the near-black dark surface it is a desaturated near-black and
- * the tag effectively disappears. And the dark override then changed the text too, so
- * the tag did not merely get dimmer, it became a different tag.
+ * **Why this has `dark:` variants after all.** It did not, on the argument that a solid
+ * tone reads the same in both modes. That was wrong, and the argument hid the actual
+ * rule. "The same tone in both modes" is right for a *border* or a *foreground* — things
+ * that sit on whatever surface they land on. A badge is a filled surface itself, and a
+ * light fill on a near-black page is a glare source: at `-100` every stage became a pale
+ * blob with near-black text, which reads as five bright stickers punched into a dark
+ * table.
  *
- * A solid tone at the same lightness reads identically on a white page and on a dark
- * one, which is the only way a badge can mean the same thing in both. No `dark:`
- * variants here — if a tag ever needs one, the hue is wrong, not the theme.
+ * So the fill inverts with the theme while the *hue* does not. Light mode gets a pale
+ * tint under dark ink; dark mode gets a deep tint under light ink. Same colour identity,
+ * opposite polarity, and legibility held in both.
+ *
+ * The icons are not decoration. A stage is a position on a funnel and the label alone
+ * makes you read it; a shape lets you scan the column and still know where each lead is.
+ * They also stop the colour from being load-bearing — at a glance a dot reads even if
+ * two hues are close, or if someone has the page zoomed past the point the label is
+ * legible.
  */
-const STAGE_TONE: Record<string, string> = {
-  new: "bg-sky-100 text-sky-900",
-  contacted: "bg-violet-100 text-violet-900",
-  qualified: "bg-amber-100 text-amber-900",
-  customer: "bg-emerald-100 text-emerald-900",
-  disqualified: "bg-neutral-200 text-neutral-700",
+const STAGE: Record<
+  string,
+  { tone: string; Icon: typeof RiCheckLine }
+> = {
+  new: {
+    tone: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200",
+    Icon: RiSparklingLine,
+  },
+  contacted: {
+    tone: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200",
+    Icon: RiPhoneLine,
+  },
+  qualified: {
+    tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
+    Icon: RiCheckLine,
+  },
+  customer: {
+    tone: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
+    Icon: RiStarLine,
+  },
+  disqualified: {
+    tone: "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300",
+    Icon: RiCloseCircleLine,
+  },
 }
 
 export function StageBadge({ stage }: { stage: string }) {
+  const entry = STAGE[stage]
+
+  // A stage this build has never heard of is still a stage. Render it neutral rather than
+  // dropping it: the read path renders an empty name as "Unnamed" for the same reason.
+  if (!entry) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+        {stage}
+      </span>
+    )
+  }
+
+  const Icon = entry.Icon
+
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-        STAGE_TONE[stage] ?? "bg-muted text-muted-foreground",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+        entry.tone,
       )}
     >
+      <Icon className="size-3 shrink-0" aria-hidden={true} />
       {stage}
     </span>
   )
