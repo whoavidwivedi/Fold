@@ -135,7 +135,20 @@ SET
     job_title        = NULLIF(COALESCE(sqlc.narg(job_title), job_title), ''),
     lifecycle_stage  = COALESCE(sqlc.narg(lifecycle_stage), lifecycle_stage),
     source           = NULLIF(COALESCE(sqlc.narg(source), source), ''),
-    owner_id         = COALESCE(sqlc.narg(owner_id), owner_id),
+    -- Assigning a lead was accepted and silently discarded: UpdateBody carries ownerId,
+    -- the handler maps it, sqlc generated the param — and this statement had no SET for
+    -- it, so the column never moved. "Hand this lead to Sam" returned 200 and did nothing.
+    --
+    -- And it could not be cleared either. Omitting the key means "leave alone" and the
+    -- zero uuid is not a user, so `REFERENCES "user"(id)` rejected it — there was no way
+    -- to unassign a lead at all. The sentinel is the same one company_id uses above, and
+    -- for the same reason: a uuid column has no empty value, so PATCH needs three states
+    -- and only a sentinel can express the third.
+    owner_id         = CASE
+                            WHEN sqlc.narg(owner_id) = '00000000-0000-0000-0000-000000000000'::uuid
+                            THEN NULL
+                            ELSE COALESCE(sqlc.narg(owner_id), owner_id)
+                        END,
     -- Score was three columns every handler read and nothing wrote, so a 20k-row list
     -- rendered a column of nothing. These are NOT NULL DEFAULT 0, so COALESCE is the
     -- whole story: NULL means "leave alone" and there is no clearing case to solve.
