@@ -63,6 +63,9 @@
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325);
+    /* White on the red. Dark mode needs near-black on the LIGHTER red, because
+       oklch(0.704) is a salmon and white on it lands around 2.5:1. */
+    --destructive-foreground: oklch(0.985 0 0);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
@@ -98,6 +101,7 @@
     --accent: oklch(0.269 0 0);
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.704 0.191 22.216);
+    --destructive-foreground: oklch(0.18 0.02 22.216);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.556 0 0);
@@ -271,14 +275,19 @@
   }
 }
 
+/* Solid, not a wash.
+   `color-mix(... 12%, transparent)` is a pale pink chip: the most dangerous control on
+   the page rendered as the least visually weighted thing on it, and a glance did not
+   register it as destructive. A container tone is for a badge. A button that deletes a
+   record is the solid role. */
 @utility t-surface-destructive {
-  color: var(--destructive);
+  color: var(--destructive-foreground);
   &::before {
-    background-color: color-mix(in oklab, var(--destructive) 12%, transparent);
-    border-color: color-mix(in oklab, var(--destructive) 22%, transparent);
+    background-color: var(--destructive);
+    border-color: var(--destructive);
   }
   &:hover::before {
-    background-color: color-mix(in oklab, var(--destructive) 20%, transparent);
+    background-color: color-mix(in oklab, var(--destructive) 88%, black);
   }
 }
 

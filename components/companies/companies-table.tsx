@@ -2,16 +2,18 @@
 
 import Link from "next/link"
 import { useMemo, useState } from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { RiAddLine } from "@remixicon/react"
 
-import { createCompany, listCompanies } from "@/lib/api/generated/endpoints/companies/companies"
+import type { Company } from "@/lib/api/generated/model"
+import { listCompanies } from "@/lib/api/generated/endpoints/companies/companies"
+import { useQuery } from "@tanstack/react-query"
+
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { cn } from "cn"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { CompanyFormFields } from "@/components/companies/company-form"
 import {
   RecordCards,
   RecordTable,
@@ -24,13 +26,6 @@ import {
   nameButtonClass,
   rowClass,
 } from "@/components/data/record-table"
-import {
-  NewRecordTrigger,
-  RecordDialog,
-  isSubmittable,
-  newBody,
-  type Draft,
-} from "@/components/forms/record-form"
 
 const PAGE_SIZE = 50
 
@@ -41,15 +36,6 @@ const COLUMN_WIDTHS =
 const TABLE_MIN_WIDTH = 640
 
 /** A company needs a name and nothing else. Named once so the guard and the body agree. */
-const REQUIRED = ["name"] as const
-
-const EMPTY: Draft = {
-  name: "",
-  domain: "",
-  industry: "",
-  size: "",
-  location: "",
-}
 
 /**
  * The companies list.
@@ -59,12 +45,9 @@ const EMPTY: Draft = {
  * nothing to window. Add it when a workspace has enough companies for it to matter.
  */
 export function CompaniesTable() {
-  const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
   const debouncedSearch = useDebouncedValue(search, 250)
 
-  const [createOpen, setCreateOpen] = useState(false)
-  const [createDraft, setCreateDraft] = useState<Draft>(EMPTY)
   const query = useQuery({
     queryKey: ["companies", { search: debouncedSearch }],
     queryFn: async () => {
@@ -80,16 +63,6 @@ export function CompaniesTable() {
   })
 
   const companies = useMemo(() => query.data?.items ?? [], [query.data])
-
-  const create = useMutation({
-    mutationFn: (draft: Draft) => createCompany(newBody(draft, REQUIRED)),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["companies"] })
-      // Closed on success, not on click, so a failed save keeps what was typed.
-      setCreateOpen(false)
-      setCreateDraft(EMPTY)
-    },
-  })
 
   return (
     <div className="flex h-full flex-col gap-4 p-4 md:p-6">
@@ -111,32 +84,12 @@ export function CompaniesTable() {
         />
 
         <div className="ml-auto flex items-center gap-2">
-          <NewRecordTrigger
-            label="New company"
-            icon={<RiAddLine aria-hidden data-icon="inline-start" />}
-            onClick={() => setCreateOpen(true)}
-          />
-          <RecordDialog
-            open={createOpen}
-            onOpenChange={(next) => {
-              setCreateOpen(next)
-              if (!next) setCreateDraft(EMPTY)
-            }}
-            title="New company"
-            description="Only a name is required. Everything else can wait."
-            fields={
-              <CompanyFormFields
-                draft={createDraft}
-                onChange={setCreateDraft}
-                idPrefix="new-company"
-              />
-            }
-            submitLabel="Create"
-            pending={create.isPending}
-            error={create.isError}
-            canSubmit={isSubmittable(createDraft, REQUIRED)}
-            onSubmit={() => create.mutate(createDraft)}
-          />
+          {/* A Link, not a button that opens a dialog. Middle-click and "copy link"
+              then work, Back closes it, and the list is never behind a scrim. */}
+          <Button render={<Link href="/companies/new" />} className="max-md:h-11 max-md:px-4">
+            <RiAddLine aria-hidden data-icon="inline-start" />
+            New company
+          </Button>
         </div>
       </div>
 

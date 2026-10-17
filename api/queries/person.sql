@@ -136,6 +136,12 @@ SET
     lifecycle_stage  = COALESCE(sqlc.narg(lifecycle_stage), lifecycle_stage),
     source           = NULLIF(COALESCE(sqlc.narg(source), source), ''),
     owner_id         = COALESCE(sqlc.narg(owner_id), owner_id),
+    -- Score was three columns every handler read and nothing wrote, so a 20k-row list
+    -- rendered a column of nothing. These are NOT NULL DEFAULT 0, so COALESCE is the
+    -- whole story: NULL means "leave alone" and there is no clearing case to solve.
+    score            = COALESCE(sqlc.narg(score), score),
+    score_fit        = COALESCE(sqlc.narg(score_fit), score_fit),
+    score_intent     = COALESCE(sqlc.narg(score_intent), score_intent),
     data             = person.data || sqlc.arg(data)::jsonb,
     updated_at       = now()
 WHERE workspace_id = sqlc.arg(workspace_id)

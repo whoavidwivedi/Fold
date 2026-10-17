@@ -494,6 +494,13 @@ function toDraft(person: Person): Draft {
     jobTitle: person.jobTitle ?? "",
     lifecycleStage: person.lifecycleStage,
     companyId: person.companyId ?? "",
+    // 0 renders blank, not "0". A score of zero is genuinely different from no score —
+    // the list draws a dash for one and the number for the other — so showing 0 in the
+    // form for an unscored lead would save a 0 over it the next time anyone edited a
+    // job title.
+    score: person.score ? String(person.score) : "",
+    scoreFit: person.scoreFit ? String(person.scoreFit) : "",
+    scoreIntent: person.scoreIntent ? String(person.scoreIntent) : "",
   }
 }
 

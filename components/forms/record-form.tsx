@@ -66,11 +66,29 @@ export function newBody<R extends RequiredFields>(draft: Draft, required: R): Bo
  * way a PATCH can remove a value — omitting the key means "leave it alone". This is the
  * rule that was broken once and is now stated once, here.
  */
+/**
+ * Fields the API declares as numbers, not strings.
+ *
+ * A draft is `Record<string, string>` because that is what an <input> gives you, and
+ * every other field is a string in the spec too. Huma validates the body before the
+ * handler runs, so sending `{"score": "85"}` for an integer field is a 422 with a
+ * message about a number. Named rather than sniffed: a field called `phoneNumber` is not
+ * a number, and guessing from the key is how a phone number becomes NaN.
+ */
+const NUMERIC = new Set(["score", "scoreFit", "scoreIntent"])
+
 export function updateBody<R extends RequiredFields>(draft: Draft, required: R): Body<R> {
   assertPresent(draft, required)
-  const body: Record<string, string> = {}
+  const body: Record<string, string | number> = {}
   for (const [key, value] of Object.entries(draft)) {
-    body[key] = value.trim()
+    const trimmed = value.trim()
+    if (NUMERIC.has(key)) {
+      // Blank is "leave it alone" — omitting the key is exactly that in a PATCH, and
+      // sending 0 would silently overwrite a real score.
+      if (trimmed !== "") body[key] = Number(trimmed)
+      continue
+    }
+    body[key] = trimmed
   }
   return body as Body<R>
 }

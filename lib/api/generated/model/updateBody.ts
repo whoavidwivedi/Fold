@@ -22,5 +22,21 @@ export interface UpdateBody {
   lifecycleStage?: UpdateBodyLifecycleStage;
   ownerId?: string;
   phone?: string;
+  /**
+     * Composite of fit and intent
+     * @minimum 0
+     * @maximum 100
+     */
+  score?: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  scoreFit?: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  scoreIntent?: number;
   source?: string;
 }

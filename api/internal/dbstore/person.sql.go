@@ -431,10 +431,16 @@ SET
     lifecycle_stage  = COALESCE($7, lifecycle_stage),
     source           = NULLIF(COALESCE($8, source), ''),
     owner_id         = COALESCE($9, owner_id),
-    data             = person.data || $10::jsonb,
+    -- Score was three columns every handler read and nothing wrote, so a 20k-row list
+    -- rendered a column of nothing. These are NOT NULL DEFAULT 0, so COALESCE is the
+    -- whole story: NULL means "leave alone" and there is no clearing case to solve.
+    score            = COALESCE($10, score),
+    score_fit        = COALESCE($11, score_fit),
+    score_intent     = COALESCE($12, score_intent),
+    data             = person.data || $13::jsonb,
     updated_at       = now()
-WHERE workspace_id = $11
-  AND id = $12
+WHERE workspace_id = $14
+  AND id = $15
   AND deleted_at IS NULL
 RETURNING
     id, company_id, first_name, last_name, email, phone, job_title,
@@ -452,6 +458,9 @@ type UpdatePersonParams struct {
 	LifecycleStage sql.NullString  `json:"lifecycle_stage"`
 	Source         sql.NullString  `json:"source"`
 	OwnerID        uuid.NullUUID   `json:"owner_id"`
+	Score          sql.NullInt32   `json:"score"`
+	ScoreFit       sql.NullInt32   `json:"score_fit"`
+	ScoreIntent    sql.NullInt32   `json:"score_intent"`
 	Data           json.RawMessage `json:"data"`
 	WorkspaceID    uuid.UUID       `json:"workspace_id"`
 	PersonID       uuid.UUID       `json:"person_id"`
@@ -487,6 +496,9 @@ func (q *Queries) UpdatePerson(ctx context.Context, arg UpdatePersonParams) (Upd
 		arg.LifecycleStage,
 		arg.Source,
 		arg.OwnerID,
+		arg.Score,
+		arg.ScoreFit,
+		arg.ScoreIntent,
 		arg.Data,
 		arg.WorkspaceID,
 		arg.PersonID,

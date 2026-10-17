@@ -197,7 +197,14 @@ type UpdateBody struct {
 	Source         *string         `json:"source,omitempty"`
 	OwnerID        *uuid.UUID      `json:"ownerId,omitempty"`
 	CompanyID      *uuid.UUID      `json:"companyId,omitempty"`
-	Data           json.RawMessage `json:"data,omitempty" doc:"Merged into existing custom values, not replaced"`
+	// The score is the one column a list can be sorted by that no human sets by hand, so
+	// all three are settable. Each is 0-100 and each is optional: absent means "leave it
+	// alone", which is exactly what COALESCE in the query reads. They were three columns
+	// every handler read and nothing wrote, so the list rendered a column of nothing.
+	Score       *int32          `json:"score,omitempty" minimum:"0" maximum:"100" doc:"Composite of fit and intent"`
+	ScoreFit    *int32          `json:"scoreFit,omitempty" minimum:"0" maximum:"100"`
+	ScoreIntent *int32          `json:"scoreIntent,omitempty" minimum:"0" maximum:"100"`
+	Data        json.RawMessage `json:"data,omitempty" doc:"Merged into existing custom values, not replaced"`
 }
 
 type GetInput struct {
@@ -447,6 +454,9 @@ func Register(api huma.API, db *platform.DB, mw func(huma.Context, func(huma.Con
 				LifecycleStage: dbstore.TextArg(in.Body.LifecycleStage),
 				Source:         optStringPtr(in.Body.Source),
 				OwnerID:        optUUID(in.Body.OwnerID),
+				Score:          dbstore.IntArg(in.Body.Score),
+				ScoreFit:       dbstore.IntArg(in.Body.ScoreFit),
+				ScoreIntent:    dbstore.IntArg(in.Body.ScoreIntent),
 				Data:           jsonArg(in.Body.Data),
 			})
 			if err != nil {

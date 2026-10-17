@@ -61,11 +61,17 @@ test.describe("companies", () => {
     await expect(page.getByRole("heading", { name: "Companies" })).toBeVisible()
     await expect(page.getByText("No companies yet")).toBeVisible()
 
-    await page.getByRole("button", { name: /new company/i }).click()
+    // A link, because /companies/new is a route. A dialog covers the list it came from,
+    // so three companies in a row meant dismiss, re-orient, type, submit, dismiss.
+    await page.getByRole("link", { name: /new company/i }).click()
+    await page.waitForURL("**/companies/new")
     await page.getByLabel("Name").fill("Northside Roofing")
     await page.getByLabel("Domain").fill("northside.test")
     await page.getByLabel("Industry").fill("Roofing")
     await page.getByRole("button", { name: /^create$/i }).click()
+    // Saving returns to the list. A company you just created has no contacts, so the
+    // thing you want next is the list, not a record with an empty table.
+    await page.waitForURL("**/companies")
 
     await expect(
       page.getByRole("cell", { name: "Northside Roofing", exact: true }),
@@ -81,7 +87,9 @@ test.describe("companies", () => {
     await page.getByRole("link", { name: "Companies" }).click()
     await page.waitForURL("**/companies")
 
-    await page.getByRole("button", { name: /new company/i }).click()
+    // A link, because /companies/new is a route. A dialog covers the list it came from.
+    await page.getByRole("link", { name: /new company/i }).click()
+    await page.waitForURL("**/companies/new")
     // Whitespace is not a name. Submitting one creates a company nobody can find.
     await page.getByLabel("Name").fill("   ")
     await expect(page.getByRole("button", { name: /^create$/i })).toBeDisabled()
