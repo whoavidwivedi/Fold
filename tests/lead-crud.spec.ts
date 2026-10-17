@@ -162,7 +162,11 @@ test.describe("lead CRUD", () => {
 
     await page.getByRole("link", { name: "Ines Drawer" }).click()
     await page.waitForURL(/\/people\/[0-9a-f-]{36}$/)
-    await page.getByRole("button", { name: /^delete$/i }).click()
+    // Delete moved behind the record's overflow menu. It used to be a peer button beside
+    // Edit, which put the most destructive control one misclick from the most common one
+    // and rendered it in a pale pink that read as the secondary action.
+    await page.getByRole("button", { name: /more actions/i }).click()
+    await page.getByRole("menuitem", { name: /delete lead/i }).click()
 
     // The confirm has to say what actually happens. It is a soft delete, not a shredder.
     await expect(page.getByText(/nothing is destroyed/i)).toBeVisible()
