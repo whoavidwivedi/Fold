@@ -4,7 +4,7 @@ import {
   RiCheckLine,
   RiCloseCircleLine,
   RiPhoneLine,
-  RiSparklingLine,
+  RiAddCircleLine,
   RiStarLine,
 } from "@remixicon/react"
 
@@ -151,7 +151,7 @@ const STAGE: Record<
 > = {
   new: {
     tone: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200",
-    Icon: RiSparklingLine,
+    Icon: RiAddCircleLine,
   },
   contacted: {
     tone: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200",
