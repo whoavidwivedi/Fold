@@ -255,6 +255,35 @@ async function authenticate(): Promise<{
       }),
     )
 
+  // Adopt an existing workspace before creating one.
+  //
+  // Signing in never sets an active organization — only /organization/set-active does —
+  // so `activeOrganizationId` is null for any fresh session even on an account that has
+  // had a workspace for months. The old check read that null as "no workspace" and made a
+  // second one, so `SEED_EMAIL` at an existing account seeded into an empty org while the
+  // real data sat in the first. Symptom: the list shows 3 leads and the workspace you
+  // thought you were in has 20,000 somewhere else.
+  if (!(await readSession()).session.activeOrganizationId) {
+    const existing = await json<{ organizations?: { id: string; name: string }[] }>(
+      await fetch(`${WEB}/api/auth/organization/list`, {
+        headers: { cookie: cookie(), Origin: WEB },
+      }),
+    )
+
+    if (existing.organizations?.length) {
+      // Newest first, because a second seed run is pointed at the workspace it just made.
+      const pick = existing.organizations[existing.organizations.length - 1]
+      console.log(`  using existing workspace ${pick.name}`)
+      const adopted = await fetch(`${WEB}/api/auth/organization/set-active`, {
+        method: "POST",
+        headers: origin(),
+        body: JSON.stringify({ organizationId: pick.id }),
+      })
+      remember(adopted)
+      if (!adopted.ok) throw new Error(`setActive failed: ${await adopted.text()}`)
+    }
+  }
+
   if (!(await readSession()).session.activeOrganizationId) {
     const created = await fetch(`${WEB}/api/auth/organization/create`, {
       method: "POST",
@@ -310,7 +339,24 @@ console.log("  signed in")
 // company it is attached to — otherwise "search by domain" returns people at a firm they
 // are not at, which is worse than having no demo data at all.
 const companies: { id: string; domain: string }[] = []
-await pool(COMPANIES_.slice(0, COMPANIES), 6, async (row) => {
+// Cycle the name list rather than slicing it. The old  silently
+// capped at the list length, so COMPANIES=400 produced 24 with no warning and the
+// setting looked broken rather than capped.
+if (COMPANIES > COMPANIES_.length) {
+  console.log(
+    `  only \`${COMPANIES_.length}\` company names are defined; cycling them to \`${COMPANIES}\``,
+  )
+}
+// The domain gets a suffix on every cycle, because leads are assigned to a company by
+// looking its domain up. 400 companies built from 24 names would put 376 leads on the
+// same company and quietly make the distribution meaningless.
+const companyNames = Array.from({ length: COMPANIES }, (_, i) => {
+  const row = COMPANIES_[i % COMPANIES_.length]
+  const cycle = Math.floor(i / COMPANIES_.length)
+  return cycle === 0 ? row : [row[0], `${row[1]}-${cycle}`]
+})
+
+await pool(companyNames, 6, async (row) => {
   const [name, domain, industry, size, location] = row
   const created = await json<{ company: { id: string } }>(
     await call("/v1/companies", {

@@ -430,11 +430,30 @@ SET
     job_title        = NULLIF(COALESCE($6, job_title), ''),
     lifecycle_stage  = COALESCE($7, lifecycle_stage),
     source           = NULLIF(COALESCE($8, source), ''),
-    owner_id         = COALESCE($9, owner_id),
-    data             = person.data || $10::jsonb,
+    -- Assigning a lead was accepted and silently discarded: UpdateBody carries ownerId,
+    -- the handler maps it, sqlc generated the param — and this statement had no SET for
+    -- it, so the column never moved. "Hand this lead to Sam" returned 200 and did nothing.
+    --
+    -- And it could not be cleared either. Omitting the key means "leave alone" and the
+    -- zero uuid is not a user, so ` + "`" + `REFERENCES "user"(id)` + "`" + ` rejected it — there was no way
+    -- to unassign a lead at all. The sentinel is the same one company_id uses above, and
+    -- for the same reason: a uuid column has no empty value, so PATCH needs three states
+    -- and only a sentinel can express the third.
+    owner_id         = CASE
+                            WHEN $9 = '00000000-0000-0000-0000-000000000000'::uuid
+                            THEN NULL
+                            ELSE COALESCE($9, owner_id)
+                        END,
+    -- Score was three columns every handler read and nothing wrote, so a 20k-row list
+    -- rendered a column of nothing. These are NOT NULL DEFAULT 0, so COALESCE is the
+    -- whole story: NULL means "leave alone" and there is no clearing case to solve.
+    score            = COALESCE($10, score),
+    score_fit        = COALESCE($11, score_fit),
+    score_intent     = COALESCE($12, score_intent),
+    data             = person.data || $13::jsonb,
     updated_at       = now()
-WHERE workspace_id = $11
-  AND id = $12
+WHERE workspace_id = $14
+  AND id = $15
   AND deleted_at IS NULL
 RETURNING
     id, company_id, first_name, last_name, email, phone, job_title,
@@ -451,7 +470,10 @@ type UpdatePersonParams struct {
 	JobTitle       sql.NullString  `json:"job_title"`
 	LifecycleStage sql.NullString  `json:"lifecycle_stage"`
 	Source         sql.NullString  `json:"source"`
-	OwnerID        uuid.NullUUID   `json:"owner_id"`
+	OwnerID        interface{}     `json:"owner_id"`
+	Score          sql.NullInt32   `json:"score"`
+	ScoreFit       sql.NullInt32   `json:"score_fit"`
+	ScoreIntent    sql.NullInt32   `json:"score_intent"`
 	Data           json.RawMessage `json:"data"`
 	WorkspaceID    uuid.UUID       `json:"workspace_id"`
 	PersonID       uuid.UUID       `json:"person_id"`
@@ -487,6 +509,9 @@ func (q *Queries) UpdatePerson(ctx context.Context, arg UpdatePersonParams) (Upd
 		arg.LifecycleStage,
 		arg.Source,
 		arg.OwnerID,
+		arg.Score,
+		arg.ScoreFit,
+		arg.ScoreIntent,
 		arg.Data,
 		arg.WorkspaceID,
 		arg.PersonID,

@@ -48,6 +48,16 @@ func TextArg(v *string) sql.NullString {
 	return sql.NullString{String: *v, Valid: true}
 }
 
+// IntArg converts a *int32 into the form a query parameter expects. Same contract as
+// TextArg: an invalid value is NULL, which every COALESCE in the queries reads as
+// "leave this column alone".
+func IntArg(v *int32) sql.NullInt32 {
+	if v == nil {
+		return sql.NullInt32{}
+	}
+	return sql.NullInt32{Int32: *v, Valid: true}
+}
+
 // TimeArg converts a *time.Time into the form a query parameter expects.
 func TimeArg(v *time.Time) sql.NullTime {
 	if v == nil {

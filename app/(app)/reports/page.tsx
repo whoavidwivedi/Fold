@@ -12,7 +12,7 @@ export default function Page() {
       <Empty className="max-w-md">
         <EmptyHeader>
           <EmptyTitle>Reports</EmptyTitle>
-          <EmptyDescription>Funnel, conversion and source ROI, computed from the append-only event log in Phase 4.</EmptyDescription>
+          <EmptyDescription>Funnel, conversion and source ROI.</EmptyDescription>
         </EmptyHeader>
       </Empty>
     </main>

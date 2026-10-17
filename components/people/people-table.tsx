@@ -10,7 +10,7 @@ import {
 } from "@tanstack/react-table"
 import { useVirtualizer } from "@tanstack/react-virtual"
 
-import { createPerson, listPersons } from "@/lib/api/generated/endpoints/people/people"
+import { listPersons } from "@/lib/api/generated/endpoints/people/people"
 import type { CreateBody, Person } from "@/lib/api/generated/model"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -18,13 +18,11 @@ import { RiAddLine } from "@remixicon/react"
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { cn } from "cn"
+import { RecordListHeader, RecordToolbar } from "@/components/data/record-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PersonFormFields } from "@/components/people/person-form"
 import {
-  NewRecordTrigger,
-  RecordDialog,
-  newBody,
   type Draft,
 } from "@/components/forms/record-form"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -43,31 +41,23 @@ import { STAGES, StageBadge } from "@/components/people/fields"
 
 const PAGE_SIZE = 50
 
-/** A lead needs one name, not both — so this is not isSubmittable, which wants all. */
-function leadHasName(draft: Draft) {
-  return (
-    (draft.firstName ?? "").trim().length > 0 ||
-    (draft.lastName ?? "").trim().length > 0
-  )
-}
-
-const EMPTY_LEAD: Draft = {
-  firstName: "",
-  lastName: "",
-  email: "",
-  phone: "",
-  jobTitle: "",
-  lifecycleStage: "new",
-  companyId: "",
-}
-
 // One grid template for the header and every row, so the two cannot drift apart.
 //
 // The `min()` wrapper is what stops narrow viewports from clipping the last columns:
 // without a floor the fixed columns collapse, text is cut mid-character, and the frame
 // silently hides data. With it, the table overflows horizontally and scrolls instead.
+/**
+ * Every max is a fraction, never `auto`.
+ *
+ * `minmax(110px, auto)` sizes the track to its content, and each row is its own grid —
+ * so the header row and the body row resolve that track independently. They happened to
+ * agree while every badge fitted inside its `min`, which is why this only surfaced when
+ * the stage badge grew: the body track grew to the badge and the header track did not,
+ * and every column after it moved 6px left. Fractions resolve from the container width,
+ * which is the same for both rows, so the two can only agree.
+ */
 const COLUMN_WIDTHS =
-  "minmax(220px, 2fr) minmax(200px, 1.5fr) minmax(110px, auto) minmax(110px, auto) minmax(70px, auto)"
+  "minmax(220px, 2fr) minmax(200px, 1.5fr) minmax(120px, 1fr) minmax(110px, 1fr) minmax(70px, .6fr)"
 const TABLE_MIN_WIDTH = 760
 
 export function PeopleTable() {
@@ -76,8 +66,6 @@ export function PeopleTable() {
   const [cursor, setCursor] = useState<string | undefined>()
   const [pageIndex, setPageIndex] = useState(0)
 
-  const [createOpen, setCreateOpen] = useState(false)
-  const [createDraft, setCreateDraft] = useState<Draft>(EMPTY_LEAD)
 
   // Keyed on the prefix, not the id: the table creates leads and the drawer edits them,
   // and both invalidate this list.
@@ -110,32 +98,6 @@ export function PeopleTable() {
   })
 
   const people = useMemo(() => query.data?.items ?? [], [query.data])
-
-  const create = useMutation({
-    mutationFn: (draft: Draft) =>
-      // newBody drops the blanks so nothing is stored as ""; the stage and company
-      // always ride along because they are never blank.
-      createPerson({
-        ...newBody(draft, []),
-        // Always sent, even when empty. CreatePerson requires both name properties to be
-        // *present* — a lead with one name is normal, and omitting the other is a 422
-        // before the handler runs. newBody drops blanks, so they go after the spread.
-        firstName: draft.firstName.trim(),
-        lastName: draft.lastName.trim(),
-        lifecycleStage: draft.lifecycleStage || "new",
-        // Sent only when set. An empty string is a malformed uuid and the API rejects it
-        // with a 422 — the same trap the PATCH sentinel exists to avoid.
-        ...(draft.companyId ? { companyId: draft.companyId } : {}),
-      } as CreateBody),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["people"] })
-      // Closed on success, not on click: a failed save has to leave the form up with
-      // what the user typed, which is also why the dialog being open means the list
-      // behind it is inert and unassertable.
-      setCreateOpen(false)
-      setCreateDraft(EMPTY_LEAD)
-    },
-  })
 
   const columns = useMemo<ColumnDef<Person>[]>(
     () => [
@@ -238,16 +200,15 @@ export function PeopleTable() {
 
   return (
     <div className="flex h-full flex-col gap-4 p-4 md:p-6">
-      <header>
-        <h1 className="text-xl font-semibold tracking-tight">Leads</h1>
-        <p className="text-muted-foreground text-sm">
-          {query.isPending
+      <RecordListHeader
+        title="Leads"
+        meta={
+          query.isPending
             ? "Loading…"
-            : `${query.data?.total ?? 0} in this workspace`}
-        </p>
-      </header>
-
-      <div className="flex flex-wrap items-center gap-2">
+            : `${query.data?.total ?? 0} in this workspace`
+        }
+      >
+        <RecordToolbar>
         <Input
           value={search}
           onChange={(e) => {
@@ -263,34 +224,18 @@ export function PeopleTable() {
         <StageFilter value={stage} onChange={(next) => { setStage(next); resetPaging() }} />
 
         <div className="ml-auto flex items-center gap-2">
-          <NewRecordTrigger
-            label="New lead"
-            icon={<RiAddLine aria-hidden data-icon="inline-start" />}
-            onClick={() => setCreateOpen(true)}
-          />
-          <RecordDialog
-            open={createOpen}
-            onOpenChange={(next) => {
-              setCreateOpen(next)
-              if (!next) setCreateDraft(EMPTY_LEAD)
-            }}
-            title="New lead"
-            description="A name is enough to start. You can fill in the rest from their record."
-            fields={
-              <PersonFormFields
-                draft={createDraft}
-                onChange={setCreateDraft}
-                idPrefix="new-lead"
-              />
-            }
-            submitLabel="Create lead"
-            pending={create.isPending}
-            error={create.isError}
-            canSubmit={leadHasName(createDraft) && !create.isPending}
-            onSubmit={() => create.mutate(createDraft)}
-          />
+          {/* A Link, not a button that opens a dialog: /people/new is a route. Middle-click
+              and "copy link" work, Back closes it, and the list is never behind a scrim. */}
+          <Button
+            render={<Link href="/people/new" />}
+            className="max-md:h-11 max-md:px-4"
+          >
+            <RiAddLine aria-hidden data-icon="inline-start" />
+            New lead
+          </Button>
         </div>
-      </div>
+      </RecordToolbar>
+      </RecordListHeader>
 
       {query.isPending ? (
         <div className="flex flex-col gap-2 rounded-lg border p-4">

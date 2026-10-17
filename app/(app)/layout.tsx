@@ -42,16 +42,30 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         >
           <AppSidebar variant="inset" />
           <SidebarInset>
-            <header className="border-border bg-background/95 sticky top-0 z-30 flex h-(--header-height) shrink-0 items-center gap-2 border-b px-4">
-              <SidebarTrigger className="-ml-1" />
-              <span className="text-sm font-medium">Fold</span>
-              {/* The account menu is here, not in the sidebar. The sidebar is a closed
-                  sheet below md, so anything inside it is unreachable on a phone — which
-                  is how signing out disappeared once already. */}
+            {/* The bar is as tall as its own contents and carries three things: the nav
+                trigger (mobile only, since the sidebar is visible above md), the account
+                menu, and the realtime badge.
+
+                It used to be a fixed 48px that printed "Fold" — a word the sidebar header
+                already says — and nothing else. 48px of nothing on every page, and the
+                page's own <h1> was pushed 48px down from the top of the content area.
+
+                The account menu is here rather than in the sidebar footer because the
+                sidebar is a closed sheet below md, which is how signing out disappeared
+                once already. Duplicating it into both places put two "Live" badges in the
+                DOM and broke every getByText("Live") in the suite, so: one instance. */}
+            <header className="bg-background/95 sticky top-0 z-30 flex shrink-0 items-center gap-2 px-4 py-1.5">
+              <SidebarTrigger className="-ml-1 md:hidden" />
+              {/* The wordmark lives here on a phone, where the sidebar that normally
+                  carries it is a closed sheet, and nowhere above md, where it is already
+                  on screen. Printing it at both widths is what made this bar 48px of
+                  nothing. */}
+              <span className="text-sm font-medium md:hidden">Fold</span>
               <div className="ml-auto">
                 <AppHeaderControls />
               </div>
             </header>
+
             <div className="flex min-h-0 flex-1 flex-col">{children}</div>
           </SidebarInset>
         </SidebarProvider>

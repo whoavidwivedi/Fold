@@ -2,16 +2,18 @@
 
 import Link from "next/link"
 import { useMemo, useState } from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { RiAddLine } from "@remixicon/react"
 
-import { createCompany, listCompanies } from "@/lib/api/generated/endpoints/companies/companies"
+import { listCompanies } from "@/lib/api/generated/endpoints/companies/companies"
+import { useQuery } from "@tanstack/react-query"
+
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { cn } from "cn"
+import { RecordListHeader, RecordToolbar } from "@/components/data/record-header"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { CompanyFormFields } from "@/components/companies/company-form"
 import {
   RecordCards,
   RecordTable,
@@ -24,32 +26,21 @@ import {
   nameButtonClass,
   rowClass,
 } from "@/components/data/record-table"
-import {
-  NewRecordTrigger,
-  RecordDialog,
-  isSubmittable,
-  newBody,
-  type Draft,
-} from "@/components/forms/record-form"
 
 const PAGE_SIZE = 50
 
 // One grid template, handed to RecordTable which applies it to the header and every row.
 // Mirrors components/people/people-table.tsx — the two lists must not drift apart.
+// Proportioned to the content, not to the viewport. `1.4fr` on Name was 530px of mostly
+// air on a 1440px screen, which pushed Domain and Industry 300px further right than they
+// needed to be and made the table read as two columns and a gap.
+// Fractions, not `auto` — see the note on the leads table: a content-sized track resolves
+// per row, and the header row and the body row are separate grids.
 const COLUMN_WIDTHS =
-  "minmax(200px, 2fr) minmax(160px, 1.2fr) minmax(140px, 1fr) minmax(80px, auto)"
+  "minmax(180px, 1.4fr) minmax(140px, 1fr) minmax(160px, 1.2fr) minmax(80px, .6fr)"
 const TABLE_MIN_WIDTH = 640
 
 /** A company needs a name and nothing else. Named once so the guard and the body agree. */
-const REQUIRED = ["name"] as const
-
-const EMPTY: Draft = {
-  name: "",
-  domain: "",
-  industry: "",
-  size: "",
-  location: "",
-}
 
 /**
  * The companies list.
@@ -59,12 +50,9 @@ const EMPTY: Draft = {
  * nothing to window. Add it when a workspace has enough companies for it to matter.
  */
 export function CompaniesTable() {
-  const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
   const debouncedSearch = useDebouncedValue(search, 250)
 
-  const [createOpen, setCreateOpen] = useState(false)
-  const [createDraft, setCreateDraft] = useState<Draft>(EMPTY)
   const query = useQuery({
     queryKey: ["companies", { search: debouncedSearch }],
     queryFn: async () => {
@@ -81,28 +69,17 @@ export function CompaniesTable() {
 
   const companies = useMemo(() => query.data?.items ?? [], [query.data])
 
-  const create = useMutation({
-    mutationFn: (draft: Draft) => createCompany(newBody(draft, REQUIRED)),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["companies"] })
-      // Closed on success, not on click, so a failed save keeps what was typed.
-      setCreateOpen(false)
-      setCreateDraft(EMPTY)
-    },
-  })
-
   return (
     <div className="flex h-full flex-col gap-4 p-4 md:p-6">
-      <header>
-        <h1 className="text-xl font-semibold tracking-tight">Companies</h1>
-        <p className="text-muted-foreground text-sm">
-          {query.isPending
+      <RecordListHeader
+        title="Companies"
+        meta={
+          query.isPending
             ? "Loading…"
-            : `${query.data?.total ?? 0} in this workspace`}
-        </p>
-      </header>
-
-      <div className="flex flex-wrap items-center gap-2">
+            : `${query.data?.total ?? 0} in this workspace`
+        }
+      >
+        <RecordToolbar>
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -111,34 +88,15 @@ export function CompaniesTable() {
         />
 
         <div className="ml-auto flex items-center gap-2">
-          <NewRecordTrigger
-            label="New company"
-            icon={<RiAddLine aria-hidden data-icon="inline-start" />}
-            onClick={() => setCreateOpen(true)}
-          />
-          <RecordDialog
-            open={createOpen}
-            onOpenChange={(next) => {
-              setCreateOpen(next)
-              if (!next) setCreateDraft(EMPTY)
-            }}
-            title="New company"
-            description="Only a name is required. Everything else can wait."
-            fields={
-              <CompanyFormFields
-                draft={createDraft}
-                onChange={setCreateDraft}
-                idPrefix="new-company"
-              />
-            }
-            submitLabel="Create"
-            pending={create.isPending}
-            error={create.isError}
-            canSubmit={isSubmittable(createDraft, REQUIRED)}
-            onSubmit={() => create.mutate(createDraft)}
-          />
+          {/* A Link, not a button that opens a dialog. Middle-click and "copy link"
+              then work, Back closes it, and the list is never behind a scrim. */}
+          <Button render={<Link href="/companies/new" />} className="max-md:h-11 max-md:px-4">
+            <RiAddLine aria-hidden data-icon="inline-start" />
+            New company
+          </Button>
         </div>
-      </div>
+      </RecordToolbar>
+      </RecordListHeader>
 
       {query.isPending ? (
         <div className="flex flex-col gap-2 rounded-lg border p-4">

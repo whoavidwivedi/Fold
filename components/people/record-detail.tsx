@@ -10,6 +10,7 @@ import {
   RiPhoneLine,
   RiStickyNoteLine,
   RiChat1Line,
+  RiMoreLine,
 } from "@remixicon/react"
 
 import { listTimeline, logActivity } from "@/lib/api/generated/endpoints/activity/activity"
@@ -57,6 +58,14 @@ import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { StageBadge } from "@/components/people/fields"
+import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { NO_COMPANY, PersonFormFields } from "@/components/people/person-form"
 import {
   RecordDialog,
@@ -169,7 +178,7 @@ export function RecordDetail({ personId }: { personId: string }) {
     // A reading column, not full bleed. The composer is a sentence to write, and a
     // 1000px-wide textarea is a bad one; the timeline reads worse the wider it gets. The
     // drawer was 40% wide for free, and the page has to choose it deliberately.
-    <div className="flex h-full flex-col gap-6 overflow-y-auto p-4 md:max-w-3xl md:p-6">
+    <div className="mx-auto flex h-full w-full max-w-3xl flex-col gap-6 overflow-y-auto p-4 md:p-6">
       <header className="flex flex-col gap-3">
         {/* Stacked below sm: side by side, the actions took a third of a 390px screen and
             left the name a truncated sliver. */}
@@ -178,7 +187,7 @@ export function RecordDetail({ personId }: { personId: string }) {
             {/* Wraps, never truncates. This heading is the whole reason the page
               exists; "Maximiliana Feathers…" is the one string that must not be
               shortened. A long unbroken email still needs breaking. */}
-          <h1 className="text-xl font-semibold break-words tracking-tight">
+          <h1 className="text-2xl font-semibold break-words tracking-tight">
               {person.data ? fullName(person.data) : <Skeleton className="h-6 w-48" />}
             </h1>
             {person.data && (
@@ -193,14 +202,25 @@ export function RecordDetail({ personId }: { personId: string }) {
                 )}
                 <StageBadge stage={person.data.lifecycleStage} />
                 {person.data.source && <span>via {person.data.source}</span>}
+                {/* The score lives here as well as in the list. The list column is a
+                    number you read while scanning; this is the number you open the
+                    record to find, and it was only available by scrolling back to a row
+                    you had already passed. Zero renders nothing — the list draws a dash
+                    for it, and a "0" on a record reads as a measurement rather than an
+                    absence. */}
+                {person.data.score > 0 && (
+                  <Badge variant="secondary" className="tabular-nums">
+                    Score {person.data.score}
+                  </Badge>
+                )}
               </p>
             )}
           </div>
 
           {person.data && (
-            <div className="flex shrink-0 gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               <EditLeadDialog person={person.data} />
-              <DeleteLeadDialog person={person.data} />
+              <RecordActionsMenu person={person.data} />
             </div>
           )}
         </div>
@@ -289,12 +309,17 @@ export function RecordDetail({ personId }: { personId: string }) {
       </form>
 
       <section className="flex min-h-0 flex-col">
-        <h2 className="text-muted-foreground mb-2 text-sm font-medium">
-          Activity
-          {timeline.data?.pages[0]?.total != null && (
-            <span className="tabular-nums"> · {timeline.data.pages[0].total}</span>
+        {/* The count rides a badge, not the heading, and only when there is something to
+            count. "Activity · 0" is a label followed by nothing; the empty state below
+            already says there is no activity, twice. */}
+        <div className="mb-2 flex items-center gap-2">
+          <h2 className="text-sm font-medium">Activity</h2>
+          {!!timeline.data?.pages[0]?.total && (
+            <Badge variant="secondary" className="tabular-nums">
+              {timeline.data.pages[0].total}
+            </Badge>
           )}
-        </h2>
+        </div>
 
         {timeline.isPending ? (
           <div className="flex flex-col gap-3">
@@ -494,6 +519,13 @@ function toDraft(person: Person): Draft {
     jobTitle: person.jobTitle ?? "",
     lifecycleStage: person.lifecycleStage,
     companyId: person.companyId ?? "",
+    // 0 renders blank, not "0". A score of zero is genuinely different from no score —
+    // the list draws a dash for one and the number for the other — so showing 0 in the
+    // form for an unscored lead would save a 0 over it the next time anyone edited a
+    // job title.
+    score: person.score ? String(person.score) : "",
+    scoreFit: person.scoreFit ? String(person.scoreFit) : "",
+    scoreIntent: person.scoreIntent ? String(person.scoreIntent) : "",
   }
 }
 
@@ -595,10 +627,55 @@ function EditLeadDialog({ person }: { person: Person }) {
  * only ever sets deleted_at, so nothing here is irreversible — which is why the confirm
  * says "hides" rather than "deletes".
  */
-function DeleteLeadDialog({ person }: { person: Person }) {
+/**
+ * Everything destructive, behind one control.
+ *
+ * Delete used to sit beside Edit as a peer button. Two problems, one of them cosmetic
+ * and one not: `variant="destructive"` is `bg-destructive/10`, a pale pink that reads as
+ * the *less* important action, and a delete one misclick from "Edit" is a delete one
+ * misclick from gone. A menu puts it two clicks deep and next to nothing else.
+ */
+function RecordActionsMenu({ person }: { person: Person }) {
+  // The menu owns the dialog's open state. Letting the dialog own it and reaching in
+  // from the menu would mean two sources of truth for one thing, which is how a dialog
+  // ends up opening on the wrong lead.
+  const [deleteOpen, setDeleteOpen] = useState(false)
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button variant="outline" size="icon-sm" aria-label="More actions">
+            <RiMoreLine aria-hidden />
+          </Button>
+        }
+      />
+      <DropdownMenuContent align="end" className="w-40">
+        <DropdownMenuGroup>
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={() => setDeleteOpen(true)}
+          >
+            Delete lead
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+      <DeleteLeadDialog person={person} open={deleteOpen} onOpenChange={setDeleteOpen} />
+    </DropdownMenu>
+  )
+}
+
+function DeleteLeadDialog({
+  person,
+  open,
+  onOpenChange,
+}: {
+  person: Person
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const [open, setOpen] = useState(false)
 
   const remove = useMutation({
     mutationFn: () => deletePerson(person.id),
@@ -611,15 +688,7 @@ function DeleteLeadDialog({ person }: { person: Person }) {
   })
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          <Button variant="destructive" size="sm">
-            Delete
-          </Button>
-        }
-      />
-
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Delete {fullName(person)}?</DialogTitle>

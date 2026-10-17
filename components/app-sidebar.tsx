@@ -76,8 +76,12 @@ export function AppSidebar({
 
       <SidebarContent>
         <SidebarGroup>
+          {/* The gap lives here, not on SidebarMenu. `SidebarMenu` renders items flush — the
+              block's own `nav-main` puts a `gap-2` on the group content for exactly this
+              reason, and without it two adjacent hover fills touch and read as one
+              smeared block rather than as one item being hovered. */}
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-2">
               {NAV.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton
@@ -101,12 +105,6 @@ export function AppSidebar({
   )
 }
 
-/**
- * Identity and sign-out.
- *
- * One component rather than a desktop-only block and a mobile-only block: two copies of a
- * sign-out is how one of them ends up broken and nobody notices, because the other works.
- */
 /**
  * The header's right-hand controls: realtime state and the account menu.
  *
@@ -138,6 +136,12 @@ export function AppHeaderControls() {
   )
 }
 
+/**
+ * Identity and sign-out.
+ *
+ * One component rather than a desktop-only block and a mobile-only block: two copies of a
+ * sign-out is how one of them ends up broken and nobody notices, because the other works.
+ */
 export function AccountMenu({ name, email }: { name?: string; email?: string }) {
   const router = useRouter()
 

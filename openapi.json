@@ -736,6 +736,25 @@
           "phone": {
             "type": "string"
           },
+          "score": {
+            "description": "Composite of fit and intent",
+            "format": "int32",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "scoreFit": {
+            "format": "int32",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "scoreIntent": {
+            "format": "int32",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
           "source": {
             "type": "string"
           }

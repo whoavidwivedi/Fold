@@ -157,7 +157,10 @@ test.describe("phone layout", () => {
       page.getByRole("link", {
         // \s+ not .* — the card stacks these as separate lines, so the accessible name
         // carries newlines between the name, the stage and the email.
-        name: /Maximiliana Featherstonehaugh\s+qualified\s+maximiliana\.featherstonehaugh@/,
+        // Capitalised, because the chip renders the display label rather than the
+        // database enum. It matched `qualified` for as long as the badge printed its
+        // input, which is how a raw enum reached every row on the screen.
+        name: /Maximiliana Featherstonehaugh\s+Qualified\s+maximiliana\.featherstonehaugh@/,
       }),
     ).toBeVisible()
 
@@ -250,7 +253,7 @@ test.describe("phone layout", () => {
       expect(box!.height, `"${name}" target height`).toBeGreaterThanOrEqual(44)
     }
 
-    const create = await page.getByRole("button", { name: /new lead/i }).boundingBox()
+    const create = await page.getByRole("link", { name: /new lead/i }).boundingBox()
     expect(create!.height, '"New lead" target height').toBeGreaterThanOrEqual(44)
   })
 })

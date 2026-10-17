@@ -31,7 +31,11 @@ export type PersonDraft = {
   phone: string
   jobTitle: string
   companyId: string
+  score: string
+  scoreFit: string
+  scoreIntent: string
 }
+
 
 /**
  * Sentinel for "this lead belongs to no company".
@@ -137,6 +141,41 @@ export function PersonFormFields({
           />
         </Field>
       </div>
+
+      {/* Score was three columns every handler read and nothing wrote, so the list
+          rendered a column of nothing across every row. 0-100, and blank means "leave it
+          alone" — an input of 0 would be indistinguishable from a deliberate zero, and a
+          PATCH cannot clear a field by sending nothing. */}
+      <Field>
+        <FieldLabel>Score</FieldLabel>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {(
+            [
+              ["score", "Total"],
+              ["scoreFit", "Fit"],
+              ["scoreIntent", "Intent"],
+            ] as const
+          ).map(([key, label]) => (
+            <Field key={key}>
+              <FieldLabel
+                htmlFor={`${idPrefix}-${key}`}
+                className="text-muted-foreground text-xs font-normal"
+              >
+                {label}
+              </FieldLabel>
+              <Input
+                id={`${idPrefix}-${key}`}
+                type="number"
+                min={0}
+                max={100}
+                placeholder="—"
+                value={draft[key] ?? ""}
+                onChange={(e) => set(key, e.target.value)}
+              />
+            </Field>
+          ))}
+        </div>
+      </Field>
     </FieldGroup>
   )
 }
