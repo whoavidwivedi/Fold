@@ -2,10 +2,10 @@
 
 import {
   RiCheckLine,
-  RiCloseCircleLine,
+  RiCloseLine,
   RiPhoneLine,
-  RiAddCircleLine,
   RiStarLine,
+  RiUserAddLine,
 } from "@remixicon/react"
 
 import { cn } from "cn"
@@ -160,6 +160,13 @@ export function formatDate(value: string) {
  * The icon is not decoration. A stage is a position on a funnel and the label alone
  * makes you read it; a shape lets you scan the column and still know where each lead is.
  * It also stops the colour from being load-bearing.
+ *
+ * **Every glyph is flat — none of them draw a circle.** `new` and `disqualified` were
+ * `add-circle` and `close-circle`, which put a second ring inside a disc that is already a
+ * circle: two concentric rings 12px across, at which point the inner one is four pixels of
+ * nothing and both icons read as a grey blob whatever stage they sit on. The disc already
+ * supplies the circle; the glyph's only job is to say which stage, so it says it with a
+ * shape that has no outline of its own to fight with.
  */
 const STAGE: Record<
   string,
@@ -174,7 +181,7 @@ const STAGE: Record<
   new: {
     pill: "bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300",
     disc: "bg-sky-600 text-white dark:bg-sky-500",
-    Icon: RiAddCircleLine,
+    Icon: RiUserAddLine,
   },
   contacted: {
     pill: "bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300",
@@ -194,7 +201,7 @@ const STAGE: Record<
   disqualified: {
     pill: "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300",
     disc: "border-2 border-dashed border-neutral-400 text-neutral-500 dark:border-neutral-500",
-    Icon: RiCloseCircleLine,
+    Icon: RiCloseLine,
   },
 }
 
