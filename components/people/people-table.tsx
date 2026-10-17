@@ -57,7 +57,7 @@ const PAGE_SIZE = 50
  * which is the same for both rows, so the two can only agree.
  */
 const COLUMN_WIDTHS =
-  "minmax(220px, 2fr) minmax(200px, 1.5fr) minmax(140px, 1fr) minmax(110px, 1fr) minmax(70px, .6fr)"
+  "minmax(220px, 2fr) minmax(200px, 1.5fr) minmax(120px, 1fr) minmax(110px, 1fr) minmax(70px, .6fr)"
 const TABLE_MIN_WIDTH = 760
 
 export function PeopleTable() {

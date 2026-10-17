@@ -125,135 +125,112 @@ export function formatDate(value: string) {
 }
 
 /**
- * One hue per stage, each with a dark counterpart, and one icon in a filled disc.
+ * The stages, and the only place any of this is written down.
  *
- * **Why this has `dark:` variants after all.** It did not, on the argument that a solid
- * tone reads the same in both modes. That was wrong, and the argument hid the actual
- * rule. "The same tone in both modes" is right for a *border* or a *foreground* — things
- * that sit on whatever surface they land on. A badge is a filled surface itself, and a
- * light fill on a near-black page is a glare source: at `-100` every stage became a pale
- * blob with near-black text, which reads as five bright stickers punched into a dark
- * table.
+ * Was two things: a `STAGES` array with real labels, and a `STAGE` tone map keyed by the
+ * same values. They could drift, and did — the filter said "Disqualified" while the badge
+ * on every row said `disqualified`, because the badge rendered the raw enum it was handed.
+ * A chip that prints 27,000 database values is not a design decision, it is a missing
+ * lookup. Now the label, the icon and the tone travel together and cannot disagree.
  *
- * The fill inverts with the theme; the hue does not.
+ * ## Why the chip has no background
  *
- * Three decisions carry the look, and all three are about weight:
+ * Three earlier versions had a tinted fill, a saturated label and a solid icon disc — three
+ * colour values per chip, at 32px, which is button weight. In a list of 27,000 rows that
+ * put the least important attribute on the row above the person's name, and a filled block
+ * in a table cell is the single thing that makes a CRM table look like a toy.
  *
- * 1. **The icon sits in a filled disc**, not bare on the tint. A bare outline glyph is
- *    the same visual weight as the label beside it and the badge reads as a word with a
- *    decoration. A solid disc with a white glyph is the darkest thing in the badge, so
- *    the eye lands on the status before it reads the word.
- * 2. **The label takes the saturated hue, not the dark ink.** `sky-800` on `sky-100`
- *    is two greys with a hint of colour; `sky-700` is unmistakably that hue. It also
- *    means the text carries the colour alone, so the badge still reads at a size where
- *    the disc is only a few pixels.
- * 3. **The disc desaturates on the neutral stage** — dashed outline, no fill. "Not
- *    started" is the absence of progress, and a filled disc would give it as much
- *    presence as "Approved".
+ * A stage is data, not a control. So the chip is an **annotation**: a solid disc carrying
+ * the only hue, and the label in ordinary foreground ink. The hue is then redundant rather
+ * than load-bearing — colour tells you the stage before you read it, and the word still
+ * says it if you cannot see colour at all, on a bad projector, or zoomed past legibility.
  *
- * The radius is `rounded-lg`, not `rounded-full`, which is `--radius` and therefore the
- * same corner as the New lead button. A pill on a 32px control is a different shape
- * language from every button around it, and one badge that opted out of the radius scale
- * read as a foreign object rather than as part of this UI. On the 20px disc `rounded-lg`
- * clamps to a circle anyway, so both track the one token.
+ * ## Why that also fixed dark mode
  *
- * The icon is not decoration. A stage is a position on a funnel and the label alone
- * makes you read it; a shape lets you scan the column and still know where each lead is.
- * It also stops the colour from being load-bearing.
+ * The original complaint was that dark mode looked wrong, and the fix at the time was a
+ * `dark:` variant on every hue. This needs none, and the reason is the fill is gone. With
+ * a transparent chip the only themed value is the label, and the label is `text-foreground`
+ * — a token. A solid `-600` disc reads the same on a white page and a near-black one,
+ * because it does not sit *on* either, it sits on itself. The bug class is gone rather than
+ * patched.
  *
- * **Every glyph is flat — none of them draw a circle.** `new` and `disqualified` were
- * `add-circle` and `close-circle`, which put a second ring inside a disc that is already a
- * circle: two concentric rings 12px across, at which point the inner one is four pixels of
- * nothing and both icons read as a grey blob whatever stage they sit on. The disc already
- * supplies the circle; the glyph's only job is to say which stage, so it says it with a
- * shape that has no outline of its own to fight with.
+ * ## Why the discs are all `-600`
+ *
+ * They were `-600` except amber, which was `-500` with dark ink because white on amber-500
+ * fails contrast. One exception is how a set stops looking like a set — the odd disc reads
+ * as a mistake. Amber-600 carries white at 3.1:1, which is under 4.5:1 for body text, so
+ * amber keeps its own value and the other four match each other.
+ *
+ * Every glyph is flat and none draws a circle. `add-circle` and `close-circle` put a second
+ * ring inside a disc that is already a circle: two concentric rings 12px across leave the
+ * inner one as four pixels of nothing, so both read as a grey blob whatever stage they sat
+ * on. The disc already supplies the circle; the glyph's only job is to say which stage.
  */
-const STAGE: Record<
-  string,
+export const STAGES = [
   {
-    /** The pill: a tint of the hue, and the label in the hue itself. */
-    pill: string
-    /** The disc behind the glyph. Neutral is dashed and unfilled — see (3). */
-    disc: string
-    Icon: typeof RiCheckLine
-  }
-> = {
-  new: {
-    pill: "bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300",
-    disc: "bg-sky-600 text-white dark:bg-sky-500",
+    value: "new",
+    label: "New",
     Icon: RiUserAddLine,
+    disc: "bg-sky-600 text-white",
   },
-  contacted: {
-    pill: "bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300",
-    disc: "bg-violet-600 text-white dark:bg-violet-500",
+  {
+    value: "contacted",
+    label: "Contacted",
     Icon: RiPhoneLine,
+    disc: "bg-violet-600 text-white",
   },
-  qualified: {
-    pill: "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
-    disc: "bg-amber-500 text-white dark:bg-amber-400 dark:text-amber-950",
+  {
+    value: "qualified",
+    label: "Qualified",
     Icon: RiCheckLine,
+    // White on amber-500 is 2.2:1. Amber-400 with near-black ink is 9.1:1, so this disc is
+    // lighter than its four siblings on purpose — see the note on `-600` above.
+    disc: "bg-amber-400 text-amber-950",
   },
-  customer: {
-    pill: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300",
-    disc: "bg-emerald-600 text-white dark:bg-emerald-500",
+  {
+    value: "customer",
+    label: "Customer",
     Icon: RiStarLine,
+    disc: "bg-emerald-600 text-white",
   },
-  disqualified: {
-    pill: "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300",
-    disc: "border-2 border-dashed border-neutral-400 text-neutral-500 dark:border-neutral-500",
+  {
+    value: "disqualified",
+    label: "Disqualified",
     Icon: RiCloseLine,
+    // Not a dashed outline any more. There is nothing behind the chip now, so a dashed
+    // border is a floating ring with a hole in it; a solid grey disc says the same thing
+    // and is quieter, which is right for the one stage that is an absence.
+    disc: "bg-neutral-400 text-white",
   },
-}
+]
+
+const STAGE_BY_VALUE = new Map(STAGES.map((s) => [s.value, s]))
 
 export function StageBadge({ stage }: { stage: string }) {
-  const entry = STAGE[stage]
+  const entry = STAGE_BY_VALUE.get(stage)
 
-  // A stage this build has never heard of is still a stage. Render it neutral rather than
-  // dropping it: the read path renders an empty name as "Unnamed" for the same reason.
+  // A stage this build has never heard of is still a stage, so it still renders — with the
+  // raw value, since inventing a label for it would be a lie. The read path renders an
+  // empty name as "Unnamed" for the same reason, and a missing chip is indistinguishable
+  // from a broken query.
   if (!entry) {
     return (
-      <span className="inline-flex items-center gap-2 rounded-lg bg-muted px-2.5 py-1.5 text-sm font-medium text-muted-foreground whitespace-nowrap">
+      <span className="inline-flex items-center text-xs font-medium text-muted-foreground whitespace-nowrap">
         {stage}
       </span>
     )
   }
 
-  const Icon = entry.Icon
+  const { Icon } = entry
 
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm whitespace-nowrap",
-        entry.pill,
-      )}
-    >
-      {/* The disc is `size-5` and the glyph is `size-3` inside it — the glyph has to sit
-          optically centred, and a 16px glyph on a 20px disc reads as a mistake. */}
-      <span
-        className={cn(
-          "grid size-5 shrink-0 place-items-center rounded-lg",
-          entry.disc,
-        )}
-      >
-        <Icon className="size-3" aria-hidden={true} />
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground whitespace-nowrap">
+      <span className={cn("grid size-4 shrink-0 place-items-center rounded-full", entry.disc)}>
+        {/* 10px in a 16px disc. Any larger and the glyph's own outline starts to crowd
+            the disc edge and the pair reads as a smudge at table density. */}
+        <Icon className="size-2.5" aria-hidden={true} />
       </span>
-      {stage}
+      {entry.label}
     </span>
   )
 }
-
-/**
- * The qualification stages, in the order a lead moves through them.
- *
- * Exported because three things now need it and they must agree: the filter chips on the
- * list, the stage badge tone map above, and the picker in the lead form. It replaced a
- * useStageOptions() hook that wrapped this constant in useMemo and was called from
- * nowhere.
- */
-export const STAGES = [
-  { value: "new", label: "New" },
-  { value: "contacted", label: "Contacted" },
-  { value: "qualified", label: "Qualified" },
-  { value: "customer", label: "Customer" },
-  { value: "disqualified", label: "Disqualified" },
-]
