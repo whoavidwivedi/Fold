@@ -12,7 +12,7 @@ export default function Page() {
       <Empty className="max-w-md">
         <EmptyHeader>
           <EmptyTitle>Pipeline</EmptyTitle>
-          <EmptyDescription>Deals move through stages with an owner and a close date. Kanban and forecasting land in Phase 2.</EmptyDescription>
+          <EmptyDescription>Deals move through stages with an owner and a close date.</EmptyDescription>
         </EmptyHeader>
       </Empty>
     </main>

@@ -12,7 +12,7 @@ export default function Page() {
       <Empty className="max-w-md">
         <EmptyHeader>
           <EmptyTitle>Tasks</EmptyTitle>
-          <EmptyDescription>Follow-ups, reminders and recurring work, driven by the workflow engine in Phase 4.</EmptyDescription>
+          <EmptyDescription>Follow-ups, reminders and recurring work.</EmptyDescription>
         </EmptyHeader>
       </Empty>
     </main>
