@@ -70,9 +70,15 @@ test.describe("clickability", () => {
     // Not locator.click(): Playwright's actionability check demands the hit target be the
     // element you named, and here that is the stretched link in another cell. A real
     // user's click does not care where the anchor's box is.
-    const box = await page
-      .getByRole("cell", { name: `alpha-${stamp}@click.test` })
-      .boundingBox()
+    // Scope to the row, then measure the cell INSIDE it. The list is keyset-ordered by
+    // created_at DESC and the seeds are created through a racing pool, so "which row is
+    // first" is not stable for the first few hundred milliseconds. Measuring the email
+    // cell by name alone and clicking its centre is measuring a row that can then move,
+    // which is how this test intermittently opened a different lead and looked like a
+    // stretched-link bug.
+    const row = page.getByRole("row").filter({ hasText: `alpha-${stamp}@click.test` })
+    await expect(row, "alpha's row should be on screen").toBeVisible()
+    const box = await row.getByRole("cell", { name: `alpha-${stamp}@click.test` }).boundingBox()
     expect(box, "the email cell should be on screen").not.toBeNull()
 
     await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2)
@@ -89,20 +95,21 @@ test.describe("clickability", () => {
     await expect(link).toHaveAttribute("href", /\/people\/[0-9a-f-]{36}$/)
   })
 
-  test("pressing a button shrinks its fill, not the button", async ({ page }) => {
+  test("pressing a button presses it, and the text goes with it", async ({ page }) => {
     await signUp(page)
 
-    const button = page.getByRole("button", { name: /new lead/i })
-    // Tailwind v4 sets the standalone `scale` property, so `transform` reads "none" both
-    // idle and pressed. Reading the wrong one makes this pass forever.
-    const scaleOf = () =>
-      button.evaluate((el) => getComputedStyle(el, "::before").scale)
+    // A stage chip, not "New lead": that is a link, and pressing it navigates, which
+    // makes the element inert exactly when the measurement is being taken.
+    const button = page.getByRole("button", { name: "Qualified", exact: true })
+    // Tailwind v4 sets the standalone `translate` property, not `transform`. Reading
+    // `transform` sees "none" both idle and pressed, and the test passes forever without
+    // checking anything — which is exactly what happened before it read the right one.
+    const translateOf = () => button.evaluate((el) => getComputedStyle(el).translate)
 
-    expect(await scaleOf(), "idle").toBe("none")
+    expect(await translateOf(), "idle").toBe("none")
 
-    // evaluate, not boundingBox: pressing opens the dialog over the button, and
-    // boundingBox waits for actionability, which would then time out on the very
-    // measurement this test exists to make.
+    // evaluate, not boundingBox: boundingBox waits for actionability, which would then
+    // time out on the very measurement this test exists to make.
     const rect = () =>
       button.evaluate((el) => {
         const r = el.getBoundingClientRect()
@@ -114,16 +121,16 @@ test.describe("clickability", () => {
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
     await page.mouse.down()
     await page.waitForTimeout(250)
-    const pressed = await scaleOf()
+    const pressed = await translateOf()
     const during = await rect()
     await page.mouse.up()
 
-    expect(pressed, "the ::before layer scales on press").toBe("0.99")
+    // `active:translate-y-px` is the stock shadcn press. It is a translate rather than a
+    // scale because a scale shrinks the label and the text moves with it.
+    expect(pressed, "the button presses down on mousedown").toBe("0px 1px")
 
-    // And the button itself never moves, which is the whole reason the effect lives on a
-    // pseudo-element rather than on the element.
     expect(Math.round(during.x), "button x while pressed").toBe(Math.round(before.x))
-    expect(Math.round(during.y), "button y while pressed").toBe(Math.round(before.y))
+    expect(Math.round(during.y) - Math.round(before.y), "button presses 1px down").toBe(1)
   })
 
   test("anything clickable shows a pointer, and disabled things do not", async ({ page }) => {

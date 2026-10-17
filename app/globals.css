@@ -48,8 +48,6 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.145 0 0);
     --popover: oklch(1 0 0);
@@ -83,6 +81,8 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
 }
 
 .dark {
@@ -189,108 +189,11 @@
   --duration-slow:    300ms;
 }
 
-/* ---------------------------------------------------------------------------
-   Density tokens.
-   Reps want 3x more rows than executives. One token, two modes, no component
-   variants. Set data-density on <html>; defaults to comfortable.
---------------------------------------------------------------------------- */
-@theme inline {
-  --spacing-row: var(--row-height);
-  --spacing-control: var(--control-height);
-}
-
-:root {
-  --row-height: 2.25rem; /* 36px — comfortable */
-  --control-height: 2.25rem;
-}
-
-:root[data-density="compact"] {
-  --row-height: 1.75rem; /* 28px — compact */
-  --control-height: 2rem;
-}
-
-/* ---------------------------------------------------------------------------
-   Surface utilities — the fill layer a button paints on.
-
-   A button's element is transparent. Its ::before, at -z-10 inside `isolate`,
-   is the visible body: fill, border, and the whole press transition. These
-   utilities write that layer, which is why they exist at all rather than the
-   variant list in button.tsx carrying six copies of `before:bg-*` — one place
-   to change what "a filled button" means.
-
-   Each is self-contained, hover included. A surface is a treatment, not a
-   colour, and splitting "resting fill" from "hover fill" across two class
-   lists is how the two drift apart.
---------------------------------------------------------------------------- */
-@utility t-surface {
-  /* The layer itself: a border that is transparent until a surface gives it
-     one, clipped to the padding box so the fill never bleeds under the edge. */
-  &::before {
-    border-color: transparent;
-  }
-}
-
-@utility t-surface-primary {
-  color: var(--primary-foreground);
-  &::before {
-    background-color: var(--primary);
-    border-color: transparent;
-  }
-  &:hover::before {
-    background-color: color-mix(in oklab, var(--primary) 88%, transparent);
-  }
-}
-
-@utility t-surface-outline {
-  color: var(--foreground);
-  &::before {
-    background-color: var(--background);
-    border-color: var(--border);
-  }
-  &:hover::before {
-    background-color: var(--muted);
-  }
-}
-
-@utility t-surface-muted {
-  color: var(--secondary-foreground);
-  &::before {
-    background-color: var(--secondary);
-    border-color: transparent;
-  }
-  &:hover::before {
-    background-color: color-mix(in oklab, var(--secondary) 92%, var(--foreground));
-  }
-}
-
-@utility t-surface-ghost {
-  color: var(--foreground);
-  &::before {
-    background-color: transparent;
-    border-color: transparent;
-  }
-  &:hover::before,
-  &[aria-expanded]::before {
-    background-color: var(--muted);
-  }
-}
-
 /* Solid, not a wash.
    `color-mix(... 12%, transparent)` is a pale pink chip: the most dangerous control on
    the page rendered as the least visually weighted thing on it, and a glance did not
    register it as destructive. A container tone is for a badge. A button that deletes a
    record is the solid role. */
-@utility t-surface-destructive {
-  color: var(--destructive-foreground);
-  &::before {
-    background-color: var(--destructive);
-    border-color: var(--destructive);
-  }
-  &:hover::before {
-    background-color: color-mix(in oklab, var(--destructive) 88%, black);
-  }
-}
-
 /* The focus ring is its own transition. Without it a ring snaps on and the only
    feedback a keyboard user gets for where they landed is the movement itself. */
 @utility transition-ring {
