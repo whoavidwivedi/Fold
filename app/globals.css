@@ -202,6 +202,14 @@
   transition-duration: var(--duration-fast);
 }
 
+/* Reduced motion removes MOVEMENT, not feedback.
+   Killing every transition also kills the colour fade on hover, on focus and on a
+   selected state — so a user who asked for less motion gets a UI that no longer says
+   which thing is selected. Movement is what causes discomfort; a colour change does not.
+
+   The base block stops everything. The override below puts colour and opacity back at
+   1ms, which is below perception but still a transition, so `transition-property: color`
+   survives the sweep above. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -209,5 +217,15 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Restore state feedback without restoring movement. */
+  [class*="transition-colors"],
+  [class*="transition-opacity"],
+  [class*="transition-[color"] {
+    transition-property: color, background-color, border-color, text-decoration-color,
+      fill, stroke, opacity !important;
+    transition-duration: 1ms !important;
   }
 }
