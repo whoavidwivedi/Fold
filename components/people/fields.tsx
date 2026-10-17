@@ -125,7 +125,7 @@ export function formatDate(value: string) {
 }
 
 /**
- * One hue per stage, each with a dark counterpart, and one icon.
+ * One hue per stage, each with a dark counterpart, and one icon in a filled disc.
  *
  * **Why this has `dark:` variants after all.** It did not, on the argument that a solid
  * tone reads the same in both modes. That was wrong, and the argument hid the actual
@@ -135,38 +135,59 @@ export function formatDate(value: string) {
  * blob with near-black text, which reads as five bright stickers punched into a dark
  * table.
  *
- * So the fill inverts with the theme while the *hue* does not. Light mode gets a pale
- * tint under dark ink; dark mode gets a deep tint under light ink. Same colour identity,
- * opposite polarity, and legibility held in both.
+ * The fill inverts with the theme; the hue does not.
  *
- * The icons are not decoration. A stage is a position on a funnel and the label alone
+ * Three decisions carry the look, and all three are about weight:
+ *
+ * 1. **The icon sits in a filled disc**, not bare on the tint. A bare outline glyph is
+ *    the same visual weight as the label beside it and the badge reads as a word with a
+ *    decoration. A solid disc with a white glyph is the darkest thing in the badge, so
+ *    the eye lands on the status before it reads the word.
+ * 2. **The label takes the saturated hue, not the dark ink.** `sky-800` on `sky-100`
+ *    is two greys with a hint of colour; `sky-700` is unmistakably that hue. It also
+ *    means the text carries the colour alone, so the badge still reads at a size where
+ *    the disc is only a few pixels.
+ * 3. **The disc desaturates on the neutral stage** — dashed outline, no fill. "Not
+ *    started" is the absence of progress, and a filled disc would give it as much
+ *    presence as "Approved".
+ *
+ * The icon is not decoration. A stage is a position on a funnel and the label alone
  * makes you read it; a shape lets you scan the column and still know where each lead is.
- * They also stop the colour from being load-bearing — at a glance a dot reads even if
- * two hues are close, or if someone has the page zoomed past the point the label is
- * legible.
+ * It also stops the colour from being load-bearing.
  */
 const STAGE: Record<
   string,
-  { tone: string; Icon: typeof RiCheckLine }
+  {
+    /** The pill: a tint of the hue, and the label in the hue itself. */
+    pill: string
+    /** The disc behind the glyph. Neutral is dashed and unfilled — see (3). */
+    disc: string
+    Icon: typeof RiCheckLine
+  }
 > = {
   new: {
-    tone: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200",
+    pill: "bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300",
+    disc: "bg-sky-600 text-white dark:bg-sky-500",
     Icon: RiAddCircleLine,
   },
   contacted: {
-    tone: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200",
+    pill: "bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300",
+    disc: "bg-violet-600 text-white dark:bg-violet-500",
     Icon: RiPhoneLine,
   },
   qualified: {
-    tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
+    pill: "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
+    disc: "bg-amber-500 text-white dark:bg-amber-400 dark:text-amber-950",
     Icon: RiCheckLine,
   },
   customer: {
-    tone: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
+    pill: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300",
+    disc: "bg-emerald-600 text-white dark:bg-emerald-500",
     Icon: RiStarLine,
   },
   disqualified: {
-    tone: "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300",
+    pill: "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300",
+    disc: "border-2 border-dashed border-neutral-400 text-neutral-500 dark:border-neutral-500",
     Icon: RiCloseCircleLine,
   },
 }
@@ -178,7 +199,7 @@ export function StageBadge({ stage }: { stage: string }) {
   // dropping it: the read path renders an empty name as "Unnamed" for the same reason.
   if (!entry) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground whitespace-nowrap">
         {stage}
       </span>
     )
@@ -189,11 +210,20 @@ export function StageBadge({ stage }: { stage: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap",
-        entry.tone,
+        "inline-flex items-center gap-2 rounded-full py-1.5 pr-3.5 pl-1.5 text-sm whitespace-nowrap",
+        entry.pill,
       )}
     >
-      <Icon className="size-3 shrink-0" aria-hidden={true} />
+      {/* The disc is `size-5` and the glyph is `size-3` inside it — the glyph has to sit
+          optically centred, and a 16px glyph on a 20px disc reads as a mistake. */}
+      <span
+        className={cn(
+          "grid size-5 shrink-0 place-items-center rounded-full",
+          entry.disc,
+        )}
+      >
+        <Icon className="size-3" aria-hidden={true} />
+      </span>
       {stage}
     </span>
   )

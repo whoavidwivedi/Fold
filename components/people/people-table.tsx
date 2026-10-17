@@ -46,8 +46,18 @@ const PAGE_SIZE = 50
 // The `min()` wrapper is what stops narrow viewports from clipping the last columns:
 // without a floor the fixed columns collapse, text is cut mid-character, and the frame
 // silently hides data. With it, the table overflows horizontally and scrolls instead.
+/**
+ * Every max is a fraction, never `auto`.
+ *
+ * `minmax(110px, auto)` sizes the track to its content, and each row is its own grid —
+ * so the header row and the body row resolve that track independently. They happened to
+ * agree while every badge fitted inside its `min`, which is why this only surfaced when
+ * the stage badge grew: the body track grew to the badge and the header track did not,
+ * and every column after it moved 6px left. Fractions resolve from the container width,
+ * which is the same for both rows, so the two can only agree.
+ */
 const COLUMN_WIDTHS =
-  "minmax(220px, 2fr) minmax(200px, 1.5fr) minmax(110px, auto) minmax(110px, auto) minmax(70px, auto)"
+  "minmax(220px, 2fr) minmax(200px, 1.5fr) minmax(140px, 1fr) minmax(110px, 1fr) minmax(70px, .6fr)"
 const TABLE_MIN_WIDTH = 760
 
 export function PeopleTable() {

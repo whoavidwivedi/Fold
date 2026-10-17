@@ -34,8 +34,10 @@ const PAGE_SIZE = 50
 // Proportioned to the content, not to the viewport. `1.4fr` on Name was 530px of mostly
 // air on a 1440px screen, which pushed Domain and Industry 300px further right than they
 // needed to be and made the table read as two columns and a gap.
+// Fractions, not `auto` — see the note on the leads table: a content-sized track resolves
+// per row, and the header row and the body row are separate grids.
 const COLUMN_WIDTHS =
-  "minmax(180px, 1.4fr) minmax(140px, 1fr) minmax(160px, 1.2fr) minmax(80px, auto)"
+  "minmax(180px, 1.4fr) minmax(140px, 1fr) minmax(160px, 1.2fr) minmax(80px, .6fr)"
 const TABLE_MIN_WIDTH = 640
 
 /** A company needs a name and nothing else. Named once so the guard and the body agree. */
