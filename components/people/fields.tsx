@@ -151,6 +151,12 @@ export function formatDate(value: string) {
  *    started" is the absence of progress, and a filled disc would give it as much
  *    presence as "Approved".
  *
+ * The radius is `rounded-lg`, not `rounded-full`, which is `--radius` and therefore the
+ * same corner as the New lead button. A pill on a 32px control is a different shape
+ * language from every button around it, and one badge that opted out of the radius scale
+ * read as a foreign object rather than as part of this UI. On the 20px disc `rounded-lg`
+ * clamps to a circle anyway, so both track the one token.
+ *
  * The icon is not decoration. A stage is a position on a funnel and the label alone
  * makes you read it; a shape lets you scan the column and still know where each lead is.
  * It also stops the colour from being load-bearing.
@@ -199,7 +205,7 @@ export function StageBadge({ stage }: { stage: string }) {
   // dropping it: the read path renders an empty name as "Unnamed" for the same reason.
   if (!entry) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground whitespace-nowrap">
+      <span className="inline-flex items-center gap-2 rounded-lg bg-muted px-2.5 py-1.5 text-sm font-medium text-muted-foreground whitespace-nowrap">
         {stage}
       </span>
     )
@@ -210,7 +216,7 @@ export function StageBadge({ stage }: { stage: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 rounded-full py-1.5 pr-3.5 pl-1.5 text-sm whitespace-nowrap",
+        "inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm whitespace-nowrap",
         entry.pill,
       )}
     >
@@ -218,7 +224,7 @@ export function StageBadge({ stage }: { stage: string }) {
           optically centred, and a 16px glyph on a 20px disc reads as a mistake. */}
       <span
         className={cn(
-          "grid size-5 shrink-0 place-items-center rounded-full",
+          "grid size-5 shrink-0 place-items-center rounded-lg",
           entry.disc,
         )}
       >
